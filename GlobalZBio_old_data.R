@@ -5,6 +5,7 @@ library(ggplot2)
 library(splines)
 library(DHARMa)
 library(MuMIn)
+library(visreg)
 
 source("fHarmonic.R") #harmonic functions
 
@@ -33,11 +34,27 @@ dat <- dat %>%
   filter(Biomass > 0)
 
 ###############################################################
-##                  fitting log10 lmm                        ##
+##                  fitting lmms                             ##
 ###############################################################
-
+## linear mixed model
 StartTime <- Sys.time()
-m_linear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh + 
+m_linear <- lmer(Biomass ~ BiomassMethod + Mesh + 
+                   exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
+                   log10(Chl) + ns(Bathy, df = 3)+
+                   ns(Bathy, df = 3) +
+                   ns(SST, df = 3)*fHarmonic(HarmDOY, k = 1) + 
+                   #add hemisphere indicator variable??
+                   (1|Gear) + 
+                   (1|Institution),
+                 data = dat)
+EndTime <- Sys.time()
+qqnorm(residuals(m_linear))
+qqline(residuals(m_linear))
+plot(m_linear)
+
+## linear mixed model with log10 response variable 
+StartTime <- Sys.time()
+m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh + 
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
                    log10(Chl) + ns(Bathy, df = 3)+
                    ns(Bathy, df = 3) +
@@ -73,8 +90,13 @@ EndTime - StartTime
 qqnorm(residuals(m1))
 qqline(residuals(m1)) ##??outliers
 r.squaredGLMM(m1)
-plot(residuals(m1), fitted(m1))
+plot(fitted(m1), residuals(m1))
 summary(m1)
 
+plot(m1)
+
 ## DHARMa diagnostics 
-res <- simulateResiduals(m1, plot = T)
+#res <- simulateResiduals(m1, plot = T)
+
+# visualise effect of variables 
+fPlotBiomassLM(m1, "Biomass_glmm1")
