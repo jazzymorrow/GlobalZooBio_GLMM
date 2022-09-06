@@ -100,8 +100,7 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
            xlab = "SST (ºC)", ylab = Y_lab)}
   
   
-  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", Terms)
-|
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", Terms)|
      grepl("ns\\(SST, df = \\d\\) \\* fHarmonic\\(HarmDOY, k = \\d\\)", Terms)){
     visreg(mdl, "HarmDOY", by = "SST",
            type = "conditional",
@@ -171,7 +170,6 @@ fPlotBiomassGLM <- function (mdl, Name) {
            scale = "response", xlab = "Method", 
            ylab = expression("Biomass"))}
   
-  
   ## Mesh size plot 
   if(grepl("Mesh", Terms, fixed = TRUE)) { 
     visreg(mdl, "Mesh", scale = "response", 
@@ -199,11 +197,12 @@ fPlotBiomassGLM <- function (mdl, Name) {
          labels=c("00:00","06:00","12:00","18:00","00:00"))
   }
   
+  # Depth plot
   if(grepl("Depth", Terms, fixed = TRUE)) {
-    visreg(mdl, "Depth", scale = "response", 
+    visreg(mdl, "Depth (m)", scale = "response", 
            xlab = "Depth", ylab = expression("Biomass"))}
   
-  
+  # day of year plot
   if(grepl("HarmDOY", Terms, fixed = TRUE)) {
     visreg(mdl, "HarmDOY", scale = "response", 
            xlab = "Day of Year", xaxt = 'n', 
@@ -212,12 +211,14 @@ fPlotBiomassGLM <- function (mdl, Name) {
          labels=c("1","91","182","273","365"))
   }
   
+  #SST plot
   if(grepl("SST", Terms, fixed = TRUE)) {
     visreg(mdl, "SST", scale = "response", 
            xlab = "SST (ºC)", ylab = expression("Biomass"))}
   
-  
-  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, \\d\\)", Terms)){
+  # DOY x SST plot
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", Terms) |
+     grepl("ns\\(SST, df = \\d\\) \\* fHarmonic\\(HarmDOY, k = \\d\\)", Terms)){
     visreg(mdl, "HarmDOY", by = "SST",
            type = "conditional",
            scale = "response",
