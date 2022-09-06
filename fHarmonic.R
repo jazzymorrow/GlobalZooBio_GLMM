@@ -16,61 +16,88 @@ fHarmonic <- function (theta, k = 4) {
 # creates empty matrix (length(theta) x 2k)
 # columns are c1 and s1 and contain:
 #c1 = cos(theta), s1 = sin(theta)
-
 # why would k be greater than 1? extends the wave, multiple cycles 
+
+
 
 #################################################################
 # Function to plot the linear models using visreg: 
 # from CMIP6_ZoopStatisticalModel repo
 
-fPlotBiomassLM <- function (mdl, Name) {
+fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   
-  # If lm use this
-  # Terms <- as.character(m1$terms)[3] # Terms from the model so we can print blank if n.s.
-  
-  # If lmer
+  # extract terms 
   Terms <- as.character(mdl@call)[2]
   
+  # Y_transform: 1 if log10 on the response
+  # Fix y label for each plot
+  if (Y_transform == 0){
+  Y_lab <- expression("log"[10]*"(Biomass)")
+  }
+  else{Y_lab <- expression("Biomass")}
+  
+  #set up figure 
   x11(width = 12, height = 6)
   if (length(mdl@frame) <= 8){r <- 2} else{r <- 3}
   par(mfrow = c(r,4), mar = c(4,4,2,2))
   
+  ##PLOTS##
+  
   if(grepl("BiomassMethod", Terms, fixed = TRUE)) {
-    visreg(mdl, "BiomassMethod", rug = FALSE, scale = "response", xlab = "Method", ylab = expression("log"[10]*"(Biomass)"))}
+    visreg(mdl, "BiomassMethod", rug = FALSE, 
+           scale = "response", xlab = "Method", 
+           ylab = Y_lab)}
   
   
-  if(grepl("Tow", Terms, fixed = TRUE)) {
-    visreg(mdl, "Tow", rug = FALSE, scale = "response", xlab = "Tow", ylab = expression("log"[10]*"(Biomass)"))}
+  # if(grepl("Tow", Terms, fixed = TRUE)) {
+  #   visreg(mdl, "Tow", rug = FALSE, 
+  #          scale = "response", xlab = "Tow", 
+  #          ylab = expression("log"[10]*"(Biomass)"))}
   
   
   if(grepl("Mesh", Terms, fixed = TRUE)) { 
-    visreg(mdl, "Mesh", scale = "response", xlab = "Mesh  (microns)", ylab = expression("log"[10]*"(Biomass)"))}
+    visreg(mdl, "Mesh", scale = "response", 
+           xlab = "Mesh  (microns)", 
+           ylab = Y_lab)}
   
   
   if(grepl("Chl", Terms, fixed = TRUE)) {
-    visreg(mdl, "Chl", scale = "response", xlab = expression("Chl-a (mg m"^-3*")"), ylab = expression("log"[10]*"(Biomass)"))
+    visreg(mdl, "Chl", scale = "response", 
+           xlab = expression("Chl-a (mg m"^-3*")"), 
+           ylab = Y_lab)
   } 
   
   
   if(grepl("Bathy", Terms, fixed = TRUE)) {
-    visreg(mdl, "Bathy", scale = "response", xlab = "Bathy (m)", ylab = expression("log"[10]*"(Biomass)"))}
+    visreg(mdl, "Bathy", scale = "response", 
+           xlab = "Bathy (m)", 
+           ylab = Y_lab)}
   
   if(grepl("HarmTOD", Terms, fixed = TRUE)) {
-    visreg(mdl, "HarmTOD", rug = FALSE, scale = "response", xlab = "Time of Day", xaxt = 'n', ylab = expression("log"[10]*"(Biomass)"))
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), labels=c("00:00","06:00","12:00","18:00","00:00"))
+    visreg(mdl, "HarmTOD", rug = FALSE, scale = "response", 
+           xlab = "Time of Day", xaxt = 'n', 
+           ylab = Y_lab)
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("00:00","06:00","12:00","18:00","00:00"))
   }
   
   if(grepl("Depth", Terms, fixed = TRUE)) {
-    visreg(mdl, "Depth", scale = "response", xlab = "Depth", ylab = expression("log"[10]*"(Biomass)"))}
+    visreg(mdl, "Depth", scale = "response", 
+           xlab = "Depth", 
+           ylab = Y_lab)}
   
   
   if(grepl("HarmDOY", Terms, fixed = TRUE)) {
-    visreg(mdl, "HarmDOY", scale = "response", xlab = "Day of Year", xaxt = 'n', ylab = expression("log"[10]*"(Biomass)"))
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), labels=c("1","91","182","273","365"))
+    visreg(mdl, "HarmDOY", scale = "response", 
+           xlab = "Day of Year", xaxt = 'n', 
+           ylab = Y_lab)
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("1","91","182","273","365"))
   }
   
   if(grepl("SST", Terms, fixed = TRUE)) {
-    visreg(mdl, "SST", scale = "response", xlab = "SST (ºC)", ylab = expression("log"[10]*"(Biomass)"))}
+    visreg(mdl, "SST", scale = "response", 
+           xlab = "SST (ºC)", ylab = Y_lab)}
   
   
   if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, \\d\\)", Terms)){
@@ -80,20 +107,22 @@ fPlotBiomassLM <- function (mdl, Name) {
            overlay = TRUE, rug = 0, 
            breaks = c(2, 15, 30), 
            xlab = "Day of Year", 
-           ylab = expression("log"[10]*"(Biomass)"),
+           ylab = Y_lab,
            strip.names = c("2 ºC", "15 ºC", "30 ºC"),
            xaxt = 'n')
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), labels=c("1","91","182","273","365"))
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("1","91","182","273","365"))
   }
   
   
   if(grepl('exp\\(-Depth\\/1000\\) \\* fHarmonic\\(HarmTOD, k = \\d\\)', Terms) |
      grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth\\/1000', Terms)) {
     visreg(mdl, "HarmTOD", by = "Depth", breaks = c(0, 100, 500), 
-           xlab = "Time of Day", ylab = expression("log"[10]*"(Biomass)"),
+           xlab = "Time of Day", ylab = Y_lab,
            type = "conditional", scale = "response", overlay = TRUE, rug = 0, 
            strip.names = c("Depth=0","Depth=100", "Depth=500"), xaxt = 'n')
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), labels=c("00:00","06:00","12:00","18:00","00:00"))
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("00:00","06:00","12:00","18:00","00:00"))
   }
   
   
@@ -120,6 +149,121 @@ fPlotBiomassLM <- function (mdl, Name) {
     RE <- ranef(mdl, whichel = "ShpCruise", condVar = TRUE)
     dotchart(RE$ShpCruise$`(Intercept)`, ylab = "ShpCruise")
   }
+  
+  dev.print(pdf, paste0("Figures/", Name, ".pdf"))
+}
+
+
+fPlotBiomassGLM <- function (mdl, Name) {
+  
+  #Extract model terms
+  Terms <- as.character(mdl@call)[2]
+  # set figure dimensions/row number 
+  x11(width = 12, height = 6)
+  if (length(mdl@frame) <= 8){r <- 2} else{r <- 3}
+  par(mfrow = c(r,4), mar = c(4,4,2,2))
+  
+  #Biomass method plot
+  if(grepl("BiomassMethod", Terms, fixed = TRUE)) {
+    visreg(mdl, "BiomassMethod", rug = FALSE, 
+           scale = "response", xlab = "Method", 
+           ylab = expression("Biomass"))}
+  
+  
+  ## Mesh size plot 
+  if(grepl("Mesh", Terms, fixed = TRUE)) { 
+    visreg(mdl, "Mesh", scale = "response", 
+           xlab = "Mesh  (microns)", 
+           ylab = expression("Biomass"))}
+  
+  ## Chl plot 
+  if(grepl("Chl", Terms, fixed = TRUE)) {
+    visreg(mdl, "Chl", scale = "response", 
+           xlab = expression("Chl-a (mg m"^-3*")"), 
+           ylab = expression("Biomass"))} 
+  
+  ## Bathymetry plot 
+  if(grepl("Bathy", Terms, fixed = TRUE)) {
+    visreg(mdl, "Bathy", scale = "response", 
+           xlab = "Bathy (m)", 
+           ylab = expression("Biomass"))}
+  
+  ## time of day plot
+  if(grepl("HarmTOD", Terms, fixed = TRUE)) {
+    visreg(mdl, "HarmTOD", rug = FALSE, 
+           scale = "response", xlab = "Time of Day", 
+           xaxt = 'n', ylab = expression("Biomass"))
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("00:00","06:00","12:00","18:00","00:00"))
+  }
+  
+  if(grepl("Depth", Terms, fixed = TRUE)) {
+    visreg(mdl, "Depth", scale = "response", 
+           xlab = "Depth", ylab = expression("Biomass"))}
+  
+  
+  if(grepl("HarmDOY", Terms, fixed = TRUE)) {
+    visreg(mdl, "HarmDOY", scale = "response", 
+           xlab = "Day of Year", xaxt = 'n', 
+           ylab = expression("Biomass"))
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("1","91","182","273","365"))
+  }
+  
+  if(grepl("SST", Terms, fixed = TRUE)) {
+    visreg(mdl, "SST", scale = "response", 
+           xlab = "SST (ºC)", ylab = expression("Biomass"))}
+  
+  
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, \\d\\)", Terms)){
+    visreg(mdl, "HarmDOY", by = "SST",
+           type = "conditional",
+           scale = "response",
+           overlay = TRUE, rug = 0, 
+           breaks = c(2, 15, 30), 
+           xlab = "Day of Year", 
+           ylab = expression("Biomass"),
+           strip.names = c("2 ºC", "15 ºC", "30 ºC"),
+           xaxt = 'n')
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("1","91","182","273","365"))
+  }
+  
+  
+  if(grepl('exp\\(-Depth\\/1000\\) \\* fHarmonic\\(HarmTOD, k = \\d\\)', Terms) |
+     grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth\\/1000', Terms)) {
+    visreg(mdl, "HarmTOD", by = "Depth", breaks = c(0, 100, 500), 
+           xlab = "Time of Day", ylab = expression("Biomass"),
+           type = "conditional", scale = "response", overlay = TRUE, rug = 0, 
+           strip.names = c("Depth=0","Depth=100", "Depth=500"), xaxt = 'n')
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("00:00","06:00","12:00","18:00","00:00"))
+  }
+  
+  
+  ### DO RANDOM EFFECTS
+  # if(grepl('(1 | DatasetId)', Terms, fixed=TRUE )){
+  #   RE <- ranef(mdl, whichel = "DatasetId", condVar = TRUE)
+  #   dotchart(RE$DatasetId$`(Intercept)`, ylab = "DatasetId")
+  # }
+  
+  if(grepl('(1 | Gear)', Terms, fixed=TRUE )){
+    RE <- ranef(mdl, whichel = "Gear", condVar = TRUE)
+    dotchart(RE$Gear$`(Intercept)`, ylab = "Gear")
+    # labels = sort(unique(dat$Gear)))
+  }
+  
+  if(grepl('(1 | Institution)', Terms, fixed=TRUE )){
+    RE <- ranef(mdl, whichel = "Institution", condVar = TRUE)
+    dotchart(RE$Institution$`(Intercept)`, ylab = "Institution")
+    # labels = sort(unique(dat$Institution))
+    
+  }
+  
+  # if(grepl('(1 | ShpCruise)', Terms, fixed=TRUE )){
+  #   RE <- ranef(mdl, whichel = "ShpCruise", condVar = TRUE)
+  #   dotchart(RE$ShpCruise$`(Intercept)`, ylab = "ShpCruise")
+  # }
   
   dev.print(pdf, paste0("Figures/", Name, ".pdf"))
 }
