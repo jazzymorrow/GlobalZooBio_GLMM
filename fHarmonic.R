@@ -32,9 +32,9 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   # Y_transform: 1 if log10 on the response
   # Fix y label for each plot
   if (Y_transform == 0){
-  Y_lab <- expression("log"[10]*"(Biomass)")
+  Y_lab <- expression("Biomass")
   }
-  else{Y_lab <- expression("Biomass")}
+  else{Y_lab <- expression("log"[10]*"(Biomass)")}
   
   #set up figure 
   x11(width = 12, height = 6)
@@ -100,7 +100,9 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
            xlab = "SST (ºC)", ylab = Y_lab)}
   
   
-  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, \\d\\)", Terms)){
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", Terms)
+|
+     grepl("ns\\(SST, df = \\d\\) \\* fHarmonic\\(HarmDOY, k = \\d\\)", Terms)){
     visreg(mdl, "HarmDOY", by = "SST",
            type = "conditional",
            scale = "response",
@@ -116,7 +118,7 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   
   
   if(grepl('exp\\(-Depth\\/1000\\) \\* fHarmonic\\(HarmTOD, k = \\d\\)', Terms) |
-     grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth\\/1000', Terms)) {
+     grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth\\/1000)', Terms)) {
     visreg(mdl, "HarmTOD", by = "Depth", breaks = c(0, 100, 500), 
            xlab = "Time of Day", ylab = Y_lab,
            type = "conditional", scale = "response", overlay = TRUE, rug = 0, 

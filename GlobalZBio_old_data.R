@@ -48,9 +48,14 @@ m_linear <- lmer(Biomass ~ BiomassMethod + Mesh +
                    (1|Institution),
                  data = dat)
 EndTime <- Sys.time()
+
+# Residual normality check
 qqnorm(residuals(m_linear))
 qqline(residuals(m_linear))
+# variance homogeneity check
 plot(m_linear)
+## plot of effects 
+fPlotBiomassLM(m_linear, "BiomassLM", Y_transform = 0)
 
 ## linear mixed model with log10 response variable 
 StartTime <- Sys.time()
