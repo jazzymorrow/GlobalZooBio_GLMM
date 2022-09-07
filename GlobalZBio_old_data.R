@@ -91,6 +91,8 @@ fPlotBiomassLM(m_loglinear, "BiomassLogLM", Y_transform = 1)
 
 ## Random Effects ##
 RE <- ranef(m_loglinear)
+qqnorm(RE$Institution$`(Intercept)`)
+qqnorm(RE$Gear$`(Intercept)`)
 dotplot.ranef.mer(RE) ##check plots of Random effects 
 
 saveRDS(m_loglinear, "Output/m_loglinear.rds")
@@ -131,6 +133,11 @@ saveRDS(glm1, "Output/glmm1.rds")
 plot(residuals(glm1) ~ predict(glm1,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")
 
+## random effects ## 
+RE <- ranef(glm1)
+qqnorm(RE$Institution$`(Intercept)`)
+qqnorm(RE$Gear$`(Intercept)`)
+
 ############ Find outliers, fit new model to compare ##################
 hist(dat$Biomass[dat$Biomass>4000]) #58 measures
 hist(dat$Biomass[dat$Biomass>8000]) #15
@@ -151,3 +158,8 @@ glm2 <- glmer(Biomass ~ BiomassMethod + Mesh +
 
 plot(residuals(glm2) ~ predict(glm2,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")
+#looks pretty good
+
+#compare model fit of glm1 and glm2
+summary(glm1)
+summary(glm2) #estimates all look pretty good 
