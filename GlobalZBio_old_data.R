@@ -57,7 +57,12 @@ plot(m_linear)
 ## plot of effects 
 fPlotBiomassLM(m_linear, "BiomassLM", Y_transform = 0)
 
+## Random Effects ##
+RE <- ranef(m_linear)
+dotplot.ranef.mer(RE)$Institution ##check plots of Random effects 
 
+saveRDS(m_linear, "Output/m_linear.rds")
+#############################################################
 ## linear mixed model with log10 response variable 
 StartTime <- Sys.time()
 m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh + 
@@ -84,11 +89,18 @@ plot(m_linear)
 ## plot of effects 
 fPlotBiomassLM(m_loglinear, "BiomassLogLM", Y_transform = 1)
 
+## Random Effects ##
+RE <- ranef(m_loglinear)
+dotplot.ranef.mer(RE) ##check plots of Random effects 
+
+saveRDS(m_loglinear, "Output/m_loglinear.rds")
+
+
 ###############################################################
 ##                fitting gamma glmms                        ##
 ###############################################################
 StartTime <- Sys.time()
-m1 <- glmer(Biomass ~ BiomassMethod + Mesh +
+glm1 <- glmer(Biomass ~ BiomassMethod + Mesh +
               exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
               log10(Chl) + ns(Bathy, df = 3) +
               fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
@@ -97,20 +109,45 @@ m1 <- glmer(Biomass ~ BiomassMethod + Mesh +
            family = Gamma(link = "log"), nAGQ = 0)
 EndTime <- Sys.time()
 EndTime - StartTime 
-## n = 30000: 15.7 minutes, 6.5 secs if nAGQ = 0 ???
-## full data set runs in 1 min if nAGQ = 0
+## n = 30000: 15.7 minutes, 6.5 secs if nAGQ = 0
 
+#model assessment
+r.squaredGLMM(glm1)
+summary(glm1)
 
-##??outliers
-r.squaredGLMM(m1)
-summary(m1)
-plot(m1)
-
-## DHARMa diagnostics 
-#res <- simulateResiduals(m1, plot = T)
+## DHARMa diagnostics: QQplot 
+res <- simulateResiduals(glm1)
+plotQQunif(res)
 
 # visualise effect of variables 
-fPlotBiomassGLM(m1, "Biomass_glmm1")
+fPlotBiomassGLM(glm1, "Biomass_glmm1")
 
 #analysis of deviance - iteratively drop each predictor
-drop1(m1, test = "Chi")
+drop1(glm1, test = "Chi")
+
+saveRDS(glm1, "Output/glmm1.rds")
+
+## residuals v fitted in link scale 
+plot(residuals(glm1) ~ predict(glm1,type="link"),
+     xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")
+
+############ Find outliers, fit new model to compare ##################
+hist(dat$Biomass[dat$Biomass>4000]) #58 measures
+hist(dat$Biomass[dat$Biomass>8000]) #15
+
+i_n <- influence(glm1)$hat
+halfnorm((i_n))
+
+str(which(residuals(glm1)>16))
+length(residuals(glm1)) #182426 total? "88650","141078"
+
+glm2 <- glmer(Biomass ~ BiomassMethod + Mesh +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
+                (1|Gear) + (1|Institution),
+              data = dat[-c(88650, 141078),],
+              family = Gamma(link = "log"), nAGQ = 0)
+
+plot(residuals(glm2) ~ predict(glm2,type="link"),
+     xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")

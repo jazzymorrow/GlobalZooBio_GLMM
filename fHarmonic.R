@@ -1,5 +1,4 @@
-# Harmonic is to fit Hour and DOY
-
+# Harmonic function to fit TOD and DOY
 fHarmonic <- function (theta, k = 4) {
   X <- matrix(0, length(theta), 2 * k)
   nam <- as.vector(outer(c("c", "s"), 1:k, paste, sep = ""))
@@ -16,14 +15,13 @@ fHarmonic <- function (theta, k = 4) {
 # creates empty matrix (length(theta) x 2k)
 # columns are c1 and s1 and contain:
 #c1 = cos(theta), s1 = sin(theta)
-# why would k be greater than 1? extends the wave, multiple cycles 
+# k be greater than 1 extends the wave, multiple cycles 
 
 
 
 #################################################################
 # Function to plot the linear models using visreg: 
 # from CMIP6_ZoopStatisticalModel repo
-
 fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   
   # extract terms 
@@ -154,6 +152,8 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   dev.print(pdf, paste0("Figures/", Name, ".pdf"))
 }
 
+#####################################################
+## function to plot effects of glmm
 
 fPlotBiomassGLM <- function (mdl, Name) {
   
