@@ -199,8 +199,8 @@ fPlotBiomassGLM <- function (mdl, Name) {
   
   # Depth plot
   if(grepl("Depth", Terms, fixed = TRUE)) {
-    visreg(mdl, "Depth (m)", scale = "response", 
-           xlab = "Depth", ylab = expression("Biomass"))}
+    visreg(mdl, "Depth", scale = "response", 
+           xlab = "Depth (m)", ylab = expression("Biomass"))}
   
   # day of year plot
   if(grepl("HarmDOY", Terms, fixed = TRUE)) {

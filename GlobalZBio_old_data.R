@@ -117,7 +117,7 @@ EndTime - StartTime
 r.squaredGLMM(glm1)
 summary(glm1)
 
-## DHARMa diagnostics: QQplot 
+# DHARMa diagnostics: QQplot 
 res <- simulateResiduals(glm1)
 plotQQunif(res)
 
@@ -129,7 +129,7 @@ drop1(glm1, test = "Chi")
 
 saveRDS(glm1, "Output/glmm1.rds")
 
-## residuals v fitted in link scale 
+# residuals v fitted in link scale 
 plot(residuals(glm1) ~ predict(glm1,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")
 
@@ -146,7 +146,7 @@ i_n <- influence(glm1)$hat
 halfnorm((i_n))
 
 str(which(residuals(glm1)>16))
-length(residuals(glm1)) #182426 total? "88650","141078"
+length(residuals(glm1)) #182426 total deviance residuals? "88650","141078"
 
 glm2 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
@@ -162,4 +162,18 @@ plot(residuals(glm2) ~ predict(glm2,type="link"),
 
 #compare model fit of glm1 and glm2
 summary(glm1)
-summary(glm2) #estimates all look pretty good 
+summary(glm2) #estimates all look pretty similar
+
+####################### glmm without interactions #########################
+glm3 <- glmer(Biomass ~ BiomassMethod + Mesh +
+              exp(-Depth/1000) + fHarmonic(HarmTOD, k = 1) + 
+              log10(Chl) + ns(Bathy, df = 3) +
+              fHarmonic(HarmDOY, k = 1) + ns(SST, df = 3) +
+              (1|Gear) + (1|Institution),
+            data = dat,
+            family = Gamma(link = "log"), nAGQ = 0)
+
+summary(glm3)
+anova(glm1,glm3)
+## model with interactions has lower deviance chisq = 4596.3
+## glm1 best model so far 
