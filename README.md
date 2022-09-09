@@ -1,4 +1,4 @@
-# Global Zooplankton Biomass Estimate
+# Estimating Global Zooplankton Biomass With a Generalised Linear Mixed Model
 In this project, I use a generalised linear mixed model to estimate global zooplankton biomass. This work is supervised by Dr Anthony Richardson and is part of my Masters in Quantitative Biology. 
 To add to repo description:
 Data source
