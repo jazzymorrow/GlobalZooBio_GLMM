@@ -1,4 +1,6 @@
-# Harmonic function to fit TOD and DOY
+# Supplementary functions used in GlobalZBio_old_data.R
+
+##### Harmonic function to fit TOD and DOY #####
 fHarmonic <- function (theta, k = 4) {
   X <- matrix(0, length(theta), 2 * k)
   nam <- as.vector(outer(c("c", "s"), 1:k, paste, sep = ""))

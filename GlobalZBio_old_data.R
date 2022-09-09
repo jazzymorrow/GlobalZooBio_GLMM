@@ -7,7 +7,7 @@ library(DHARMa)
 library(MuMIn)
 library(visreg)
 
-source("fHarmonic.R") #harmonic functions
+source("utils.R") #harmonic functions
 
 ###########################################
 ##        Data and modifications         ##
