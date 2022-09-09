@@ -37,7 +37,7 @@ dat <- dat %>%
 ##                  fitting lmms                             ##
 ###############################################################
 ## linear mixed model
-StartTime <- Sys.time()
+#StartTime <- Sys.time()
 m_linear <- lmer(Biomass ~ BiomassMethod + Mesh + 
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
                    log10(Chl) + ns(Bathy, df = 3)+
@@ -47,7 +47,7 @@ m_linear <- lmer(Biomass ~ BiomassMethod + Mesh +
                    (1|Gear) + 
                    (1|Institution),
                  data = dat)
-EndTime <- Sys.time()
+#EndTime <- Sys.time()
 
 # Residual normality check
 qqnorm(residuals(m_linear))
@@ -64,7 +64,7 @@ dotplot.ranef.mer(RE)$Institution ##check plots of Random effects
 saveRDS(m_linear, "Output/m_linear.rds")
 #############################################################
 ## linear mixed model with log10 response variable 
-StartTime <- Sys.time()
+#StartTime <- Sys.time()
 m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh + 
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
                    log10(Chl) + ns(Bathy, df = 3)+
@@ -74,8 +74,8 @@ m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh +
                    (1|Gear) + 
                    (1|Institution),
                  data = dat)
-EndTime <- Sys.time()
-EndTime - StartTime ## 17 sec
+#EndTime <- Sys.time()
+#EndTime - StartTime ## 17 sec
 
 ## produces warning messages about variable scale 
 summary(m_loglinear)
@@ -164,7 +164,7 @@ plot(residuals(glm2) ~ predict(glm2,type="link"),
 summary(glm1)
 summary(glm2) #estimates all look pretty similar
 
-####################### glmm without interactions #########################
+#################### GLMM without interactions ######################
 glm3 <- glmer(Biomass ~ BiomassMethod + Mesh +
               exp(-Depth/1000) + fHarmonic(HarmTOD, k = 1) + 
               log10(Chl) + ns(Bathy, df = 3) +
@@ -177,3 +177,16 @@ summary(glm3)
 anova(glm1,glm3)
 ## model with interactions has lower deviance chisq = 4596.3
 ## glm1 best model so far 
+
+
+################### GLMM with depth:TOD, SST:DOY ###############
+glm4 <- glmer(Biomass ~ BiomassMethod + Mesh +
+                exp(-Depth/1000):fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1):ns(SST, df = 3) +
+                (1|Gear) + (1|Institution),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+car::vif(glm4)
+anova(glm1, glm4)
+## no multicollinearity but glmm1 is still better 
