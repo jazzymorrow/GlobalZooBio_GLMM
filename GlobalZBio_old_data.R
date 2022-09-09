@@ -25,13 +25,18 @@ dat <- dat %>%
     Depth = replace(Depth, Depth > 1500, 1500),
     Bathy = replace(Bathy, Bathy > 7000, 7000),
     SST = replace(SST, SST > 31, 31),
-    NorthHemis <- ifelse(dat$Latitude >= 0, 1,0), #binary hemisphere variable
+    NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemisphere variable
     Biomass = replace(Biomass, Biomass > 10000, 10000)) 
 
 ## remove zero biomass measures 
 length(dat$Biomass[dat$Biomass==0]) #5 zero biomass
 dat <- dat %>%
   filter(Biomass > 0)
+
+## check for missing measures 
+sum(is.na(dat$Institution)) ##14274 missing institutions
+sum(is.na(dat$Project)) ## 55544
+sum(is.na(dat$Tow)) #2132 missing 
 
 ###############################################################
 ##                  fitting lmms                             ##
@@ -120,6 +125,8 @@ summary(glm1)
 # DHARMa diagnostics: QQplot 
 res <- simulateResiduals(glm1)
 plotQQunif(res)
+#qqnorm(residuals(glm1))
+qqline(residuals(glm1))
 
 # visualise effect of variables 
 fPlotBiomassGLM(glm1, "Biomass_glmm1")
@@ -188,5 +195,29 @@ glm4 <- glmer(Biomass ~ BiomassMethod + Mesh +
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
 car::vif(glm4)
-anova(glm1, glm4)
+car::vif(glm1)
+anova(glm1, glm4) #AIC
 ## no multicollinearity but glmm1 is still better 
+
+################ add tow as a predictor #####################
+glm5 <- glmer(Biomass ~ BiomassMethod + Mesh + Tow +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
+                (1|Gear) + (1|Institution),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+summary(glm5) #Tow coefficient estimates not significant 
+summary(glm1) 
+
+################ add hemisphere factor #####################
+glm6 <- glmer(Biomass ~ BiomassMethod + Mesh + NorthHemis +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
+                (1|Gear) + (1|Institution),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+summary(glm6)
+summary(glm1)
+anova(glm1, glm6) #significant but not a huge change in AIC/DEV
