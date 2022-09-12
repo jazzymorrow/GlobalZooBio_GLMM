@@ -64,8 +64,8 @@ days_of_year_harmonic <- seq(15,365,30)/365*2*pi
 depths <- 0.5:199.5
 
 #########################################################
-
-for(k in 1:12) {
+k = 1 #currently only working with month 1
+#for(k in 1:12) {
   # Loop over months
   
   print(paste("Now working on month", k,  sep = " "))
@@ -107,7 +107,7 @@ for(k in 1:12) {
   save_array[k, "SST", ] <- as.vector(curr_sst)
   save_array[k, "Chl", ] <- as.vector(curr_chl)
   
-  # Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
+  #Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
   save_array[k, "SST", 
              which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
   save_array[k, "Chl", 
@@ -122,10 +122,10 @@ for(k in 1:12) {
   
   ####### SURFACE LAYER PREDICTIONS ########
   # Get surface layer estimate
-  kk$GLM_Mesozoo <- (10 ^ (predict(m7,
-                                   newdata = kk,
-                                   re.form = NA, 
-                                   se.fit = FALSE))) 
+  kk$GLM_Mesozoo <- ((predict(m7, 
+                              newdata = kk,
+                              re.form = NA, 
+                              se.fit = FALSE))) 
   # (re.form = NA sets random effects to zero), 
   # use se.fit = TRUE to calculate confidence interval, 
   # use bootnsim = 100 for number of bootstrap samples
@@ -150,15 +150,16 @@ for(k in 1:12) {
   
   for (m in 2:length(depths)) {
     # Loop over depths
+    print(depths[m])
     setTxtProgressBar(pb, m)
     kk_deep$Depth <- depths[m]
     kk_deep$GLM_Mesozoo <-
-      kk_deep$GLM_Mesozoo + (10 ^ (predict(
+      kk_deep$GLM_Mesozoo + (predict(
         m7,
         newdata = kk_deep,
         re.form = NA,
         se.fit = FALSE
-      ))) # re.form = NA sets random effects to zero
+      )) # re.form = NA sets random effects to zero
   }
   
   ## Do shallow cells. This is the slow bit. 
@@ -183,14 +184,12 @@ for(k in 1:12) {
         # Loop over depths
         curr_kk$Depth <- curr_depths[m]
         kk_shallow[n, "GLM_Mesozoo"] <-
-          kk_shallow[n, "GLM_Mesozoo"] + (10 ^ (
+          kk_shallow[n, "GLM_Mesozoo"] + (
             predict(
               m7,
               newdata = curr_kk,
               re.form = NA,
-              se.fit = FALSE
-            )
-          )) # re.form = NA sets random effects to zero
+              se.fit = FALSE)) # re.form = NA sets random effects to zero
       }
     }
   }
@@ -219,7 +218,7 @@ for(k in 1:12) {
   save_array2[k, "SST", ] <- as.vector(kk$SST)
   save_array2[k, "Chl", ] <- as.vector(kk$Chl)
   save_array2[k, "GLM_Mesozoo", ] <- as.vector(kk$GLM_Mesozoo)
-} # End month loop
+#} # End month loop
 
 
 # Save the output array
