@@ -134,7 +134,7 @@ fPlotBiomassGLM(glm1, "Biomass_glmm1")
 #analysis of deviance - iteratively drop each predictor
 drop1(glm1, test = "Chi")
 
-saveRDS(glm1, "Output/glmm1.rds")
+saveRDS(glm1, "Output/glm1.rds")
 
 # residuals v fitted in link scale 
 plot(residuals(glm1) ~ predict(glm1,type="link"),
@@ -211,13 +211,13 @@ summary(glm5) #Tow coefficient estimates not significant
 summary(glm1) 
 
 ################ add hemisphere factor #####################
-glm6 <- glmer(Biomass ~ BiomassMethod + Mesh + NorthHemis +
+glm6 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)*NorthHemis +
                 (1|Gear) + (1|Institution),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
 summary(glm6)
 summary(glm1)
-anova(glm1, glm6) #significant but not a huge change in AIC/DEV
+anova(glm1, glm6) #Lots more parameters but does lower deviance/BIC???
