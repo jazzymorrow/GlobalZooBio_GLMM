@@ -9,9 +9,9 @@ library(visreg)
 
 source("utils.R") #harmonic functions
 
-###########################################
-##        Data and modifications         ##
-###########################################
+#####################################################
+##             Data and modifications              ##
+#####################################################
 
 dat <- readRDS("Data/GlobalBiomassData.rds") 
 
@@ -37,6 +37,26 @@ dat <- dat %>%
 sum(is.na(dat$Institution)) ##14274 missing institutions
 sum(is.na(dat$Project)) ## 55544
 sum(is.na(dat$Tow)) #2132 missing 
+sum(is.na(dat$DatasetID)) # nothing missing 
+
+
+## check out institutions/projects/gear
+nlevels(dat$ShpCruise)
+nlevels(dat$Gear)
+nlevels(dat$Project)
+nlevels(dat$Institution)
+nlevels(dat$DatasetID)
+
+sum(table(dat$Gear, dat$DatasetID)>0) / (nlevels(dat$Gear) * 
+                                           nlevels(dat$DatasetID)) * 100 #1.74%
+sum(table(dat$Gear, dat$Institution)>0) / (nlevels(dat$Gear) * 
+                                             nlevels(dat$Institution)) * 100 #1.91%
+sum(table(dat$Gear, dat$Project)>0) / (nlevels(dat$Gear) * 
+                                         nlevels(dat$Project)) * 100 #1.67%
+
+tempory <- dat %>% 
+  group_by(DatasetID) %>% 
+  summarise(N = length(unique(Gear)))
 
 ###############################################################
 ##                  fitting lmms                             ##
@@ -75,7 +95,6 @@ m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh +
                    log10(Chl) + ns(Bathy, df = 3)+
                    ns(Bathy, df = 3) +
                    ns(SST, df = 3)*fHarmonic(HarmDOY, k = 1) + 
-                   #add hemisphere indicator variable??
                    (1|Gear) + 
                    (1|Institution),
                  data = dat)
@@ -214,10 +233,42 @@ summary(glm1)
 glm6 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)*NorthHemis +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) * NorthHemis +
                 (1|Gear) + (1|Institution),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
-summary(glm6)
+summary(glm6) #BIC: 259994.4, Deviance: 259473.5 
 summary(glm1)
-anova(glm1, glm6) #Lots more parameters but does lower deviance/BIC???
+anova(glm1, glm6) #Lots more parameters but has lower deviance/BIC???
+
+
+################ Test different random effects ################
+glm7 <- glmer(Biomass ~ BiomassMethod + Mesh +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)* NorthHemis +
+                (1|Gear)  + (1|DatasetID),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+summary(glm7) #BIC: 367553.6 Deviance: 367029.5
+
+glm8 <- glmer(Biomass ~ BiomassMethod + Mesh +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) * NorthHemis +
+                (1|Institution)  + (1|DatasetID),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+summary(glm8)
+
+r.squaredGLMM(glm1)
+r.squaredGLMM(glm8)
+r.squaredGLMM(glm7)
+
+## glm7 has lower residual variance, higher deviance, more samples used??
+# glm7 has highest R^2: 0.477 trigamma, 0.91 lognormal 
+
+## check random effects of glm7
+RE <- ranef(glm7)
+qqnorm(RE$DatasetID$`(Intercept)`)
+qqnorm(RE$Gear$`(Intercept)`)

@@ -272,3 +272,27 @@ fPlotBiomassGLM <- function (mdl, Name) {
   
   dev.print(pdf, paste0("Figures/", Name, ".pdf"))
 }
+
+
+############# Plot three way interaction for N/S hemisphere ##########
+visreg(glm6, "HarmDOY", by = "SST",
+       cond = list(NorthHemis = 0),
+       type = "conditional",
+       scale = "response",
+       overlay = TRUE, rug = 0, 
+       breaks = c(2, 15, 30), 
+       xlab = "Day of Year", 
+       ylab = expression("Biomass: Southern Hemisphere"),
+       strip.names = c("2 ºC", "15 ºC", "30 ºC"),
+       xaxt = 'n')
+
+visreg(glm6, "HarmDOY", by = "SST",
+       cond = list(NorthHemis = 1),
+       type = "conditional",
+       scale = "response",
+       overlay = TRUE, rug = 0, 
+       breaks = c(2, 15, 30), 
+       xlab = "Day of Year", 
+       ylab = expression("Biomass: Northern Hemisphere"),
+       strip.names = c("2 ºC", "15 ºC", "30 ºC"),
+       xaxt = 'n')
