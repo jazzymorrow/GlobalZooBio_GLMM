@@ -253,7 +253,7 @@ theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent")
 ))
 
 ggplot(kk) +  geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
-    scale_fill_gradientn(name = expression(paste("Mesozoo Biomass mg m"^-2)),
+    scale_fill_gradientn(name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
                          colours = rev(col),
                          position = "bottom",
                          na.value = "grey80")+ theme_opts + ggtitle("January") +
