@@ -20,7 +20,6 @@ dat <- dat %>%
   mutate(
     HarmTOD = (TimeLocal/24)*2*pi, # Convert to radians
     HarmDOY = (DOY2/365)*2*pi, # Convert to radians
-    Latitude2 = abs(Latitude), #may not need this 
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
     Bathy = replace(Bathy, Bathy > 7000, 7000),
@@ -87,6 +86,7 @@ RE <- ranef(m_linear)
 dotplot.ranef.mer(RE)$Institution ##check plots of Random effects 
 
 saveRDS(m_linear, "Output/m_linear.rds")
+
 #############################################################
 ## linear mixed model with log10 response variable 
 #StartTime <- Sys.time()
@@ -125,7 +125,7 @@ saveRDS(m_loglinear, "Output/m_loglinear.rds")
 ###############################################################
 ##                fitting gamma glmms                        ##
 ###############################################################
-StartTime <- Sys.time()
+#StartTime <- Sys.time()
 glm1 <- glmer(Biomass ~ BiomassMethod + Mesh +
               exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
               log10(Chl) + ns(Bathy, df = 3) +
@@ -133,8 +133,8 @@ glm1 <- glmer(Biomass ~ BiomassMethod + Mesh +
              (1|Gear) + (1|Institution),
            data = dat,
            family = Gamma(link = "log"), nAGQ = 0)
-EndTime <- Sys.time()
-EndTime - StartTime 
+#EndTime <- Sys.time()
+#EndTime - StartTime 
 ## n = 30000: 15.7 minutes, 6.5 secs if nAGQ = 0
 
 #model assessment
@@ -272,3 +272,22 @@ r.squaredGLMM(glm7)
 RE <- ranef(glm7)
 qqnorm(RE$DatasetID$`(Intercept)`)
 qqnorm(RE$Gear$`(Intercept)`)
+
+
+
+################### Check out predict function with glm1 ########################
+kk <- data.frame("BiomassMethod" = as.factor("Carbon"), "Mesh" = 200, 
+                 "HarmDOY" = 1, "SST" = 15, "Chl" = c(0.1,0.3), "Bathy" = 2000,
+                 "Depth" = c(1,10,100,400), "HarmTOD"= 1, "Gear" = as.factor("116"),
+                 "Institution" = as.factor("103"))
+predict1 <- (exp(predict(glm1, 
+                      type = c("link"),
+                      newdata = kk,
+                      re.form = NA, 
+                      se.fit = FALSE))) 
+
+predict2 <- (predict(glm1, 
+                      type = c("response"),
+                      newdata = kk,
+                      re.form = NA, 
+                      se.fit = FALSE))

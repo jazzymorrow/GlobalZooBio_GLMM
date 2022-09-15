@@ -9,7 +9,7 @@ library(splines)
 #library(lmerTest)
 
 # IMPORT COPEPOD DATABASE BIOMASS GLMM
-glm1 <- readRDS(file.path("Output","glm1.rds"))
+mdl <- readRDS(file.path("Output","glm1.rds"))
 
 ## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
 bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
@@ -23,10 +23,10 @@ plot(bathy_data) #check out bathy map
 bathy.df <- as.data.frame(bathy_data, xy = TRUE) 
 ggplot() +  #gglot version of map 
   geom_raster(data = bathy.df, aes(x = x, y = y, fill = Bathy)) +
-  scale_fill_viridis_c(na.value="#000000")
+  scale_fill_viridis_c()
 
 length(bathy.df$Bathy)
-sum(is.na(bathy.df$Bathy)) #NAs: 22079 - because earth has land...
+sum(is.na(bathy.df$Bathy)) #NAs represent land
 
 
 ## Calculate areas of grid cells
@@ -64,7 +64,7 @@ days_of_year_harmonic <- seq(15,365,30)/365*2*pi
 depths <- 0.5:199.5
 
 #########################################################
-k = 1 #currently only working with month 1
+k = 1 #currently only working with SST and CHL Jan
 #for(k in 1:12) {
   # Loop over months
   
@@ -81,16 +81,16 @@ k = 1 #currently only working with month 1
   ## Import current month sst and chlo climatology
   curr_sst <- 
     t(as.matrix(readRDS(list.files(
-      path = './one/',
+      path = './Data/',
       pattern = glob2rx(paste("SST*", 
       dimnames(save_array)[[1]][mons_nh], "*", 
       sep = "")), full.names = TRUE))))[, 180:1]
   
   curr_chl <- 
     t(as.matrix(readRDS(list.files(
-      path = './one/',
+      path = './Data/',
       pattern = glob2rx(paste("Chl*", 
-      dimnames(save_arra)[[1]][mons_nh], 
+      dimnames(save_array)[[1]][mons_nh], 
       "*", sep = "")), full.names = TRUE))))[, 180:1]
   
   ## Fill in this month's slice of save_array
@@ -122,7 +122,8 @@ k = 1 #currently only working with month 1
   
   ####### SURFACE LAYER PREDICTIONS ########
   # Get surface layer estimate
-  kk$GLM_Mesozoo <- ((predict(m7, 
+  kk$GLM_Mesozoo <- (exp(predict(mdl,
+                              type = "link",
                               newdata = kk,
                               re.form = NA, 
                               se.fit = FALSE))) 
@@ -154,8 +155,9 @@ k = 1 #currently only working with month 1
     setTxtProgressBar(pb, m)
     kk_deep$Depth <- depths[m]
     kk_deep$GLM_Mesozoo <-
-      kk_deep$GLM_Mesozoo + (predict(
+      kk_deep$GLM_Mesozoo + exp(predict(
         m7,
+        type = "link",
         newdata = kk_deep,
         re.form = NA,
         se.fit = FALSE
@@ -184,9 +186,10 @@ k = 1 #currently only working with month 1
         # Loop over depths
         curr_kk$Depth <- curr_depths[m]
         kk_shallow[n, "GLM_Mesozoo"] <-
-          kk_shallow[n, "GLM_Mesozoo"] + (
+          kk_shallow[n, "GLM_Mesozoo"] + exp(
             predict(
               m7,
+              type = "link",
               newdata = curr_kk,
               re.form = NA,
               se.fit = FALSE)) # re.form = NA sets random effects to zero
@@ -228,3 +231,30 @@ saveRDS(save_array2,
                          version = 3))
 
 
+
+#### PLOT OUTPUT
+library(rasterImage)
+
+col <- rev(rasterImage::colorPalette(n = 14, type = "jet.colors"))
+
+theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent"),
+                         panel.background = element_blank(),
+                         plot.background = element_rect(fill="white"),
+                         plot.title = element_text(hjust = 0.5, size = rel(0.5)),
+                         panel.border = element_blank(),
+                         axis.line = element_blank(),
+                         axis.text.x = element_blank(),
+                         axis.text.y = element_blank(),
+                         axis.ticks = element_blank(),
+                         axis.title.x = element_blank(),
+                         axis.title.y = element_blank(),
+                         legend.position = "bottom",
+                         legend.text = element_text(size = rel(1))
+))
+
+ggplot(kk) +  geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
+    scale_fill_gradientn(name = expression(paste("Mesozoo Biomass mg m"^-2)),
+                         colours = rev(col),
+                         position = "bottom",
+                         na.value = "grey80")+ theme_opts + ggtitle("January") +
+    theme(plot.title = element_text(size = rel(1.5)))
