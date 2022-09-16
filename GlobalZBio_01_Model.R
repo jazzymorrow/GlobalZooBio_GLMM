@@ -144,7 +144,7 @@ summary(glm1)
 # DHARMa diagnostics: QQplot 
 res <- simulateResiduals(glm1)
 plotQQunif(res)
-#qqnorm(residuals(glm1))
+qqnorm(residuals(glm1))
 qqline(residuals(glm1))
 
 # visualise effect of variables 
@@ -266,6 +266,7 @@ r.squaredGLMM(glm8)
 r.squaredGLMM(glm7)
 
 ## glm7 has lower residual variance, higher deviance, more samples used??
+# glm1 R^2: 0.4249192 trigamma, 0.8945343 lognormal
 # glm7 has highest R^2: 0.477 trigamma, 0.91 lognormal 
 
 ## check random effects of glm7
@@ -275,10 +276,15 @@ qqnorm(RE$Gear$`(Intercept)`)
 
 
 
-################### Check out predict function with glm1 ########################
-kk <- data.frame("BiomassMethod" = as.factor("Carbon"), "Mesh" = 200, 
-                 "HarmDOY" = 1, "SST" = 15, "Chl" = c(0.1,0.3), "Bathy" = 2000,
-                 "Depth" = c(1,10,100,400), "HarmTOD"= 1, "Gear" = as.factor("116"),
+################### Check out predict function with glm1 ###################
+kk <- data.frame("BiomassMethod" = as.factor("Carbon"), 
+                 "Mesh" = 200, 
+                 "HarmDOY" = 1, 
+                 "SST" = 15, 
+                 "Chl" = c(0.1,0.3), 
+                 "Bathy" = 2000,
+                 "Depth" = c(1,10,100,400), 
+                 "HarmTOD"= 1, "Gear" = as.factor("116"),
                  "Institution" = as.factor("103"))
 predict1 <- (exp(predict(glm1, 
                       type = c("link"),

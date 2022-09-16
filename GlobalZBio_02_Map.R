@@ -1,5 +1,5 @@
 source("utils.R") # load the harmonic function
-
+library(visreg)
 library(raster)
 library(ggplot2)
 #library(ncdf4) 
@@ -107,7 +107,7 @@ k = 1 #currently only working with SST and CHL Jan
   save_array[k, "SST", ] <- as.vector(curr_sst)
   save_array[k, "Chl", ] <- as.vector(curr_chl)
   
-  #Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
+#Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
   save_array[k, "SST", 
              which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
   save_array[k, "Chl", 
@@ -249,12 +249,17 @@ theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent")
                          axis.title.x = element_blank(),
                          axis.title.y = element_blank(),
                          legend.position = "bottom",
-                         legend.text = element_text(size = rel(1))
-))
+                         legend.text = element_text(size = rel(1))))
 
-ggplot(kk) +  geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
+
+ggplot(kk) +  
+  geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
     scale_fill_gradientn(name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
                          colours = rev(col),
                          position = "bottom",
-                         na.value = "grey80")+ theme_opts + ggtitle("January") +
+                         na.value = "grey80")+ 
+    theme_opts + ggtitle("January") +
     theme(plot.title = element_text(size = rel(1.5)))
+
+dev.print(pdf, paste0("Figures/", "MapDraft", ".pdf"))
+

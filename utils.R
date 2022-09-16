@@ -275,7 +275,7 @@ fPlotBiomassGLM <- function (mdl, Name) {
 
 
 ############# Plot three way interaction for N/S hemisphere ##########
-visreg(glm6, "HarmDOY", by = "SST",
+visreg(glm7, "HarmDOY", by = "SST",
        cond = list(NorthHemis = 0),
        type = "conditional",
        scale = "response",
@@ -286,7 +286,7 @@ visreg(glm6, "HarmDOY", by = "SST",
        strip.names = c("2 ºC", "15 ºC", "30 ºC"),
        xaxt = 'n')
 
-visreg(glm6, "HarmDOY", by = "SST",
+visreg(glm7, "HarmDOY", by = "SST",
        cond = list(NorthHemis = 1),
        type = "conditional",
        scale = "response",
