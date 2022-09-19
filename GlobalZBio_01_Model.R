@@ -15,11 +15,12 @@ source("utils.R") #harmonic functions
 
 dat <- readRDS("Data/GlobalBiomassData.rds") 
 
-## Reduce (but don't remove) some extreme values: as in GlobalZooBio_01_Model.R
+## Reduce (but don't remove) some extreme values: 
+### as in GlobalZooBio_01_Model.R
 dat <- dat %>% 
   mutate(
     HarmTOD = (TimeLocal/24)*2*pi, # Convert to radians
-    HarmDOY = (DOY2/365)*2*pi, # Convert to radians
+    HarmDOY = (DOY/365)*2*pi, # Convert to radians
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
     Bathy = replace(Bathy, Bathy > 7000, 7000),
@@ -47,9 +48,9 @@ nlevels(dat$Institution)
 nlevels(dat$DatasetID)
 
 sum(table(dat$Gear, dat$DatasetID)>0) / (nlevels(dat$Gear) * 
-                                           nlevels(dat$DatasetID)) * 100 #1.74%
+                                           nlevels(dat$DatasetID)) *100 #1.74%
 sum(table(dat$Gear, dat$Institution)>0) / (nlevels(dat$Gear) * 
-                                             nlevels(dat$Institution)) * 100 #1.91%
+                                             nlevels(dat$Institution)) *100 #1.91%
 sum(table(dat$Gear, dat$Project)>0) / (nlevels(dat$Gear) * 
                                          nlevels(dat$Project)) * 100 #1.67%
 
@@ -246,7 +247,7 @@ anova(glm1, glm6) #Lots more parameters but has lower deviance/BIC???
 glm7 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)* NorthHemis +
+                fHarmonic(HarmDOY, k = 1) *NorthHemis* ns(SST, df = 3) +
                 (1|Gear)  + (1|DatasetID),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
@@ -255,7 +256,7 @@ summary(glm7) #BIC: 367553.6 Deviance: 367029.5
 glm8 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) * NorthHemis +
+                fHarmonic(HarmDOY, k = 1) * NorthHemis*ns(SST, df = 3) +
                 (1|Institution)  + (1|DatasetID),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
@@ -274,7 +275,7 @@ RE <- ranef(glm7)
 qqnorm(RE$DatasetID$`(Intercept)`)
 qqnorm(RE$Gear$`(Intercept)`)
 
-
+fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
 ################### Check out predict function with glm1 ###################
 kk <- data.frame("BiomassMethod" = as.factor("Carbon"), 
@@ -297,3 +298,47 @@ predict2 <- (predict(glm1,
                       newdata = kk,
                       re.form = NA, 
                       se.fit = FALSE))
+
+
+######################## Add lat*lon interaction ###########################
+glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+                ns(Latitude, df = 3)*ns(Longitude, df = 3) +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)* NorthHemis +
+                (1|Gear)  + (1|DatasetID),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+
+summary(glm9)
+
+
+m_test <- glmer(Biomass ~ BiomassMethod + Mesh + 
+                ns(Latitude, df = 3)*ns(Longitude, df = 3) +
+                fHarmonic(HarmTOD, k = 1) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)* NorthHemis +
+                log10(Chl) + ns(Bathy, df = 3) +
+                (1|Gear)  + (1|DatasetID),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+
+visreg2d(m_test, x = "Longitude", y = "Latitude", 
+         type = "conditional",
+         scale = "response",
+         plot.type="image")
+#visreg2d doesn't work if exp(-Depth/1000)* interaction is present 
+
+# DOY * HEMIS
+plot(dat$Latitude, dat$SST) #correlated but not linear, is this problematic?
+
+glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+                ns(Latitude, df = 5)*ns(Longitude, df = 5) +
+                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * NorthHemis +
+                (1|Gear)  + (1|DatasetID),
+              data = dat,
+              family = Gamma(link = "log"), nAGQ = 0)
+
+visreg2d(glm9, x = "Longitude", y = "Latitude", 
+         plot.type="image")

@@ -240,7 +240,8 @@ col <- rev(rasterImage::colorPalette(n = 14, type = "jet.colors"))
 theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent"),
                          panel.background = element_blank(),
                          plot.background = element_rect(fill="white"),
-                         plot.title = element_text(hjust = 0.5, size = rel(0.5)),
+                         plot.title = element_text(hjust = 0.5, 
+                                                   size = rel(0.5)),
                          panel.border = element_blank(),
                          axis.line = element_blank(),
                          axis.text.x = element_blank(),
@@ -254,7 +255,8 @@ theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent")
 
 ggplot(kk) +  
   geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
-    scale_fill_gradientn(name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
+    scale_fill_gradientn(
+      name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
                          colours = rev(col),
                          position = "bottom",
                          na.value = "grey80")+ 
