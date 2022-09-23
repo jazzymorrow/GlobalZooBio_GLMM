@@ -2,6 +2,7 @@ source("utils.R") # load the harmonic function
 library(visreg)
 library(raster)
 library(ggplot2)
+library(terra)
 #library(ncdf4) 
 library(dplyr)
 library(tidyverse)
@@ -16,6 +17,7 @@ bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
 bathy_matrix <- t(as.matrix(bathy_data$Bathy))
 bathy_matrix <- bathy_matrix[,180:1]
 
+bathy_data <- rast(bathy_data) # this converts to terra file
 
 ## SOME CODE TO EXPLORE THE RASTER FILE
 plot(bathy_data) #check out bathy map 

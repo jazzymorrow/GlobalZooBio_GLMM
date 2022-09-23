@@ -23,13 +23,13 @@ dat <- dat %>%
     HarmDOY = (DOY/365)*2*pi, # Convert to radians
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
+    Depth2 = Depth/1000,
     Bathy = replace(Bathy, Bathy > 7000, 7000),
     SST = replace(SST, SST > 31, 31),
     NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemisphere variable
     Biomass = replace(Biomass, Biomass > 10000, 10000)) 
 
-## remove zero biomass measures 
-length(dat$Biomass[dat$Biomass==0]) #5 zero biomass
+## remove 5 zero biomass measures 
 dat <- dat %>%
   filter(Biomass > 0)
 
@@ -145,8 +145,6 @@ summary(glm1)
 # DHARMa diagnostics: QQplot 
 res <- simulateResiduals(glm1)
 plotQQunif(res)
-qqnorm(residuals(glm1))
-qqline(residuals(glm1))
 
 # visualise effect of variables 
 fPlotBiomassGLM(glm1, "Biomass_glmm1")
@@ -277,27 +275,6 @@ qqnorm(RE$Gear$`(Intercept)`)
 
 fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
-################### Check out predict function with glm1 ###################
-kk <- data.frame("BiomassMethod" = as.factor("Carbon"), 
-                 "Mesh" = 200, 
-                 "HarmDOY" = 1, 
-                 "SST" = 15, 
-                 "Chl" = c(0.1,0.3), 
-                 "Bathy" = 2000,
-                 "Depth" = c(1,10,100,400), 
-                 "HarmTOD"= 1, "Gear" = as.factor("116"),
-                 "Institution" = as.factor("103"))
-predict1 <- (exp(predict(glm1, 
-                      type = c("link"),
-                      newdata = kk,
-                      re.form = NA, 
-                      se.fit = FALSE))) 
-
-predict2 <- (predict(glm1, 
-                      type = c("response"),
-                      newdata = kk,
-                      re.form = NA, 
-                      se.fit = FALSE))
 
 
 ######################## Add lat*lon interaction ###########################
@@ -314,9 +291,10 @@ summary(glm9)
 
 
 m_test <- glmer(Biomass ~ BiomassMethod + Mesh + 
-                ns(Latitude, df = 3)*ns(Longitude, df = 3) +
-                fHarmonic(HarmTOD, k = 1) +
-                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3)* NorthHemis +
+                ns(Latitude, df = 5)*ns(Longitude, df = 5) +
+                exp(-Depth2) * fHarmonic(HarmTOD, k = 1) +
+                fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
+                ns(SST, df = 3) +
                 log10(Chl) + ns(Bathy, df = 3) +
                 (1|Gear)  + (1|DatasetID),
               data = dat,
@@ -325,20 +303,42 @@ m_test <- glmer(Biomass ~ BiomassMethod + Mesh +
 visreg2d(m_test, x = "Longitude", y = "Latitude", 
          type = "conditional",
          scale = "response",
+         zlim = c(0,0.4),
          plot.type="image")
 #visreg2d doesn't work if exp(-Depth/1000)* interaction is present 
 
 # DOY * HEMIS
 plot(dat$Latitude, dat$SST) #correlated but not linear, is this problematic?
+cor(dat$Latitude, dat$SST)
 
-glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+visreg2d(glm9, x = "Longitude", y = "Latitude", 
+         plot.type="image")
+
+
+#####################################################
+## Lat * Lon but remove SST
+glm10 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 5)*ns(Longitude, df = 5) +
-                exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * NorthHemis +
+                fHarmonic(HarmDOY, k = 1) * ns(Latitude, df = 3) +
+                ns(SST, df = 3) +
                 (1|Gear)  + (1|DatasetID),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
 
-visreg2d(glm9, x = "Longitude", y = "Latitude", 
+## model comparison with glm7: currect best 
+visreg2d(glm10, x = "Longitude", y = "Latitude", 
          plot.type="image")
+
+summary(glm10)
+
+r.squaredGLMM(glm10)
+r.squaredGLMM(glm7)
+anova(glm7, glm10)
+
+##glm10 diadnostics 
+res <- simulateResiduals(glm10)
+plotQQunif(res)
+
+fPlotBiomassGLM(m_test, "Biomass_test")
