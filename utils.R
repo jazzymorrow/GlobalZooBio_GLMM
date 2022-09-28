@@ -163,7 +163,7 @@ fPlotBiomassGLM <- function (mdl, Name) {
   Terms <- as.character(mdl@call)[2]
   # set figure dimensions/row number 
   x11(width = 12, height = 6)
-  r <- ceiling((length(mdl@frame)+1)/4) 
+  if (length(mdl@frame) <= 8){r <- 2} else{r <- 3} 
   #plus one because 3-way interactions will have too many plots
   par(mfrow = c(r,4), mar = c(4,4,2,2))
   
@@ -201,11 +201,11 @@ fPlotBiomassGLM <- function (mdl, Name) {
   }
   
   # Depth plot
-  if(grepl("Depth", Terms, fixed = TRUE)) {
-    visreg(mdl, "Depth", scale = "response", 
+  if(grepl("Depth2", Terms, fixed = TRUE)) {
+    visreg(mdl, "Depth2", scale = "response", 
            xlab = "Depth (m)", ylab = expression("Biomass"))}
   
-  # day of year plot
+  # DOY plot
   if(grepl("HarmDOY", Terms, fixed = TRUE)) {
     visreg(mdl, "HarmDOY", scale = "response", 
            xlab = "Day of Year", xaxt = 'n', 
@@ -220,8 +220,10 @@ fPlotBiomassGLM <- function (mdl, Name) {
            xlab = "SST (ºC)", ylab = expression("Biomass"))}
   
   # DOY x SST plot
-  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", Terms) |
-     grepl("ns\\(SST, df = \\d\\) \\* fHarmonic\\(HarmDOY, k = \\d\\)", Terms)){
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(SST, df = \\d\\)", 
+           Terms) |
+     grepl("ns\\(SST, df = \\d\\) \\* fHarmonic\\(HarmDOY, k = \\d\\)", 
+           Terms)){
     visreg(mdl, "HarmDOY", by = "SST",
            type = "conditional",
            scale = "response",
@@ -235,14 +237,14 @@ fPlotBiomassGLM <- function (mdl, Name) {
          labels=c("1","91","182","273","365"))
   }
   
-  
-  if(grepl('exp\\(-Depth\\/1000\\) \\* fHarmonic\\(HarmTOD, k = \\d\\)', 
+  ## Depth x TOD
+  if(grepl('exp\\(-Depth2\\) \\* fHarmonic\\(HarmTOD, k = \\d\\)', 
            Terms) |
-     grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth\\/1000', 
+     grepl('fHarmonic\\(HarmTOD, k = \\d\\) \\* exp\\(-Depth2\\)', 
            Terms)) {
     visreg(mdl, "HarmTOD", 
-           by = "Depth", 
-           breaks = c(0, 100, 500), 
+           by = "Depth2", 
+           breaks = c(0, 100/1000, 500/1000), 
            xlab = "Time of Day", 
            ylab = expression("Biomass"),
            type = "conditional", 
@@ -257,9 +259,11 @@ fPlotBiomassGLM <- function (mdl, Name) {
   
   # DOY x SST x NorthHemis plot
   #hemisphere factor must be MIDDLE in interaction 
-  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* NorthHemis \\* ns\\(SST, df = \\d\\) ", 
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* 
+           NorthHemis \\* ns\\(SST, df = \\d\\) ", 
            Terms) |
-     grepl("ns\\(SST, df = \\d\\) \\* NorthHemis \\* fHarmonic\\(HarmDOY, k = \\d\\)", 
+     grepl("ns\\(SST, df = \\d\\) \\* NorthHemis \\* 
+           fHarmonic\\(HarmDOY, k = \\d\\)", 
            Terms)){
     visreg(mdl, "HarmDOY", by = "SST",
            cond = list(NorthHemis = 0),
@@ -288,6 +292,27 @@ fPlotBiomassGLM <- function (mdl, Name) {
          labels=c("1","91","182","273","365"))
   }
   
+  ## DOY x Latitude: might have used "*" or ":"
+  if(grepl("fHarmonic\\(HarmDOY, k = \\d\\) \\* ns\\(Latitude, df = \\d\\) ", 
+           Terms) |
+     grepl("ns\\(Latitude, df = \\d\\)  \\* fHarmonic\\(HarmDOY, k = \\d\\)", 
+           Terms) |
+     grepl("ns\\(Latitude, df = \\d\\):fHarmonic\\(HarmDOY, k = \\d\\)", 
+           Terms) |
+     grepl("fHarmonic\\(HarmDOY, k = \\d\\):ns\\(Latitude, df = \\d\\) ", 
+           Terms)){
+    visreg(mdl, "HarmDOY", by = "Latitude",
+           type = "conditional",
+           scale = "response",
+           overlay = TRUE, rug = 0, 
+           breaks = c(-50, 0, 50), 
+           xlab = "Day of Year", 
+           ylab = expression("Biomass"),
+           strip.names = c("-50º", "0º", "50º"),
+           xaxt = 'n')
+    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+         labels=c("1","91","182","273","365"))
+  }
   
   ## DO RANDOM EFFECTS
   if(grepl('(1 | DatasetID)', Terms, fixed=TRUE )){
@@ -313,24 +338,33 @@ fPlotBiomassGLM <- function (mdl, Name) {
 
 
 ############# Plot three way interaction for N/S hemisphere ##########
-visreg(glm9, "HarmDOY", by = "SST",
-       cond = list(NorthHemis = 0),
-       type = "conditional",
-       scale = "response",
-       overlay = TRUE, rug = 0, 
-       breaks = c(2, 15, 30), 
-       xlab = "Day of Year", 
-       ylab = expression("Biomass: Southern Hemisphere"),
-       strip.names = c("2 ºC", "15 ºC", "30 ºC"),
-       xaxt = 'n')
+# visreg(glm9, "HarmDOY", by = "SST",
+#        cond = list(NorthHemis = 0),
+#        type = "conditional",
+#        scale = "response",
+#        overlay = TRUE, rug = 0, 
+#        breaks = c(2, 15, 30), 
+#        xlab = "Day of Year", 
+#        ylab = expression("Biomass: Southern Hemisphere"),
+#        strip.names = c("2 ºC", "15 ºC", "30 ºC"),
+#        xaxt = 'n')
+# 
+# visreg(glm9, "HarmDOY", by = "SST",
+#        cond = list(NorthHemis = 1),
+#        type = "conditional",
+#        scale = "response",
+#        overlay = TRUE, rug = 0, 
+#        breaks = c(2, 15, 30), 
+#        xlab = "Day of Year", 
+#        ylab = expression("Biomass: Northern Hemisphere"),
+#        strip.names = c("2 ºC", "15 ºC", "30 ºC"),
+#        xaxt = 'n')
 
-visreg(glm9, "HarmDOY", by = "SST",
-       cond = list(NorthHemis = 1),
-       type = "conditional",
-       scale = "response",
-       overlay = TRUE, rug = 0, 
-       breaks = c(2, 15, 30), 
-       xlab = "Day of Year", 
-       ylab = expression("Biomass: Northern Hemisphere"),
-       strip.names = c("2 ºC", "15 ºC", "30 ºC"),
-       xaxt = 'n')
+######### Function to create contour plot for lat x lon interaction ##########
+lat_lon <- function(mdl, Name){
+  visreg2d(mdl, x = "Longitude", y = "Latitude", 
+           type = "conditional",
+           scale = "response",
+           plot.type="image")
+  dev.print(pdf, paste0("Figures/", Name, ".pdf"))
+}

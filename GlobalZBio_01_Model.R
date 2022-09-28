@@ -249,6 +249,7 @@ glm7 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 (1|Gear)  + (1|DatasetID),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
+
 summary(glm7) #BIC: 367553.6 Deviance: 367029.5
 
 glm8 <- glmer(Biomass ~ BiomassMethod + Mesh +
@@ -276,7 +277,6 @@ qqnorm(RE$Gear$`(Intercept)`)
 fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
 
-
 ######################## Add lat*lon interaction ###########################
 glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 3)*ns(Longitude, df = 3) +
@@ -290,55 +290,51 @@ glm9 <- glmer(Biomass ~ BiomassMethod + Mesh +
 summary(glm9)
 
 
-m_test <- glmer(Biomass ~ BiomassMethod + Mesh + 
-                ns(Latitude, df = 5)*ns(Longitude, df = 5) +
-                exp(-Depth2) * fHarmonic(HarmTOD, k = 1) +
-                fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
-                ns(SST, df = 3) +
-                log10(Chl) + ns(Bathy, df = 3) +
-                (1|Gear)  + (1|DatasetID),
-              data = dat,
-              family = Gamma(link = "log"), nAGQ = 0)
-
-visreg2d(m_test, x = "Longitude", y = "Latitude", 
-         type = "conditional",
-         scale = "response",
-         zlim = c(0,0.4),
-         plot.type="image")
-#visreg2d doesn't work if exp(-Depth/1000)* interaction is present 
-
 # DOY * HEMIS
 plot(dat$Latitude, dat$SST) #correlated but not linear, is this problematic?
 cor(dat$Latitude, dat$SST)
 
-visreg2d(glm9, x = "Longitude", y = "Latitude", 
-         plot.type="image")
-
 
 #####################################################
-## Lat * Lon but remove SST
+##            Lat * Lon and SST                   ###
+#####################################################
 glm10 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 5)*ns(Longitude, df = 5) +
                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
-                fHarmonic(HarmDOY, k = 1) * ns(Latitude, df = 3) +
+                fHarmonic(HarmDOY, k = 1):ns(Latitude, df = 3) +
+                fHarmonic(HarmDOY, k = 1) +
                 ns(SST, df = 3) +
                 (1|Gear)  + (1|DatasetID),
               data = dat,
               family = Gamma(link = "log"), nAGQ = 0)
 
-## model comparison with glm7: currect best 
-visreg2d(glm10, x = "Longitude", y = "Latitude", 
-         plot.type="image")
-
 summary(glm10)
-
 r.squaredGLMM(glm10)
 r.squaredGLMM(glm7)
 anova(glm7, glm10)
 
-##glm10 diadnostics 
+##glm10 diagnostics 
 res <- simulateResiduals(glm10)
 plotQQunif(res)
+car::vif(glm10)
 
-fPlotBiomassGLM(m_test, "Biomass_test")
+## plot predictors 
+fPlotBiomassGLM(glm10, "Biomass_glmm10")
+lat_lon(glm10, "LatLon_glmm10")
+
+## Now increase the df 
+glm11 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+                 ns(Latitude, df = 7)*ns(Longitude, df = 7) +
+                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
+                 log10(Chl) + ns(Bathy, df = 3) +
+                 fHarmonic(HarmDOY, k = 1):ns(Latitude, df = 3) +
+                 fHarmonic(HarmDOY, k = 1) +
+                 ns(SST, df = 3) +
+                 (1|Gear)  + (1|DatasetID),
+               data = dat,
+               family = Gamma(link = "log"), nAGQ = 0)
+
+## plot predictors 
+fPlotBiomassGLM(glm11, "Biomass_glmm10")
+lat_lon(glm11, "LatLon_glmm10")
