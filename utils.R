@@ -1,6 +1,9 @@
 # Supplementary functions used in GlobalZBio_old_data.R
 
+################################################
 ##### Harmonic function to fit TOD and DOY #####
+################################################
+
 fHarmonic <- function (theta, k = 4) {
   X <- matrix(0, length(theta), 2 * k)
   nam <- as.vector(outer(c("c", "s"), 1:k, paste, sep = ""))
@@ -21,8 +24,10 @@ fHarmonic <- function (theta, k = 4) {
 
 
 
-#################################################################
-# Function to plot the linear models using visreg: 
+###################################################
+# Function to plot the linear model using visreg  #
+###################################################
+
 # from CMIP6_ZoopStatisticalModel repo
 fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   
@@ -154,8 +159,9 @@ fPlotBiomassLM <- function (mdl, Name, Y_transform = 0) {
   dev.print(pdf, paste0("Figures/", Name, ".pdf"))
 }
 
-#####################################################
-## function to plot effects of glmm
+##################################################
+##      Function to plot glmm with visreg       ##
+##################################################
 
 fPlotBiomassGLM <- function (mdl, Name) {
   
@@ -360,7 +366,10 @@ fPlotBiomassGLM <- function (mdl, Name) {
 #        strip.names = c("2 ºC", "15 ºC", "30 ºC"),
 #        xaxt = 'n')
 
-######### Function to create contour plot for lat x lon interaction ##########
+##############################################################
+## Function to create contour plot for lat x lon interaction #
+##############################################################
+
 lat_lon <- function(mdl, Name){
   visreg2d(mdl, x = "Longitude", y = "Latitude", 
            type = "conditional",

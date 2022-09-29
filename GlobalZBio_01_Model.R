@@ -7,7 +7,7 @@ library(DHARMa)
 library(MuMIn)
 library(visreg)
 
-source("utils.R") #harmonic functions
+source("utils.R") #harmonic and visreg functions
 
 #####################################################
 ##             Data and modifications              ##
@@ -23,7 +23,7 @@ dat <- dat %>%
     HarmDOY = (DOY/365)*2*pi, # Convert to radians
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
-    Depth2 = Depth/1000,
+    Depth2 = Depth/1000, #scaled depth variable 
     Bathy = replace(Bathy, Bathy > 7000, 7000),
     SST = replace(SST, SST > 31, 31),
     NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemisphere variable
@@ -47,12 +47,12 @@ nlevels(dat$Project)
 nlevels(dat$Institution)
 nlevels(dat$DatasetID)
 
-sum(table(dat$Gear, dat$DatasetID)>0) / (nlevels(dat$Gear) * 
-                                           nlevels(dat$DatasetID)) *100 #1.74%
-sum(table(dat$Gear, dat$Institution)>0) / (nlevels(dat$Gear) * 
-                                             nlevels(dat$Institution)) *100 #1.91%
-sum(table(dat$Gear, dat$Project)>0) / (nlevels(dat$Gear) * 
-                                         nlevels(dat$Project)) * 100 #1.67%
+sum(table(dat$Gear, dat$DatasetID)>0) / 
+  (nlevels(dat$Gear) * nlevels(dat$DatasetID)) *100 #1.74%
+sum(table(dat$Gear, dat$Institution)>0) / 
+  (nlevels(dat$Gear) * nlevels(dat$Institution)) *100 #1.91%
+sum(table(dat$Gear, dat$Project)>0) / 
+  (nlevels(dat$Gear) * nlevels(dat$Project)) * 100 #1.67%
 
 tempory <- dat %>% 
   group_by(DatasetID) %>% 
@@ -68,7 +68,6 @@ m_linear <- lmer(Biomass ~ BiomassMethod + Mesh +
                    log10(Chl) + ns(Bathy, df = 3)+
                    ns(Bathy, df = 3) +
                    ns(SST, df = 3)*fHarmonic(HarmDOY, k = 1) + 
-                   #add hemisphere indicator variable??
                    (1|Gear) + 
                    (1|Institution),
                  data = dat)
@@ -146,6 +145,11 @@ summary(glm1)
 res <- simulateResiduals(glm1)
 plotQQunif(res)
 
+# residuals v fitted in link scale 
+plot(residuals(glm1) ~ predict(glm1,type="link"),
+     xlab=expression(hat(eta)),ylab="Deviance residuals",
+     pch=20,col="blue")
+
 # visualise effect of variables 
 fPlotBiomassGLM(glm1, "Biomass_glmm1")
 
@@ -154,9 +158,6 @@ drop1(glm1, test = "Chi")
 
 saveRDS(glm1, "Output/glm1.rds")
 
-# residuals v fitted in link scale 
-plot(residuals(glm1) ~ predict(glm1,type="link"),
-     xlab=expression(hat(eta)),ylab="Deviance residuals",pch=20,col="blue")
 
 ## random effects ## 
 RE <- ranef(glm1)
@@ -187,7 +188,10 @@ plot(residuals(glm2) ~ predict(glm2,type="link"),
 
 #compare model fit of glm1 and glm2
 summary(glm1)
-summary(glm2) #estimates all look pretty similar
+summary(glm2) 
+
+#estimates all look pretty similar
+#outliers clearly aren't overly influential 
 
 #################### GLMM without interactions ######################
 glm3 <- glmer(Biomass ~ BiomassMethod + Mesh +
@@ -289,15 +293,11 @@ glm9 <- glmer(Biomass ~ BiomassMethod + Mesh +
 
 summary(glm9)
 
-
-# DOY * HEMIS
-plot(dat$Latitude, dat$SST) #correlated but not linear, is this problematic?
-cor(dat$Latitude, dat$SST)
+## SST and latitude are correllated, NorthHemis not required now 
 
 
-#####################################################
-##            Lat * Lon and SST                   ###
-#####################################################
+################# Lat * Lon and SST #################
+
 glm10 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 5)*ns(Longitude, df = 5) +
                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
@@ -314,7 +314,7 @@ r.squaredGLMM(glm10)
 r.squaredGLMM(glm7)
 anova(glm7, glm10)
 
-##glm10 diagnostics 
+## glm10 diagnostics 
 res <- simulateResiduals(glm10)
 plotQQunif(res)
 car::vif(glm10)
@@ -322,6 +322,11 @@ car::vif(glm10)
 ## plot predictors 
 fPlotBiomassGLM(glm10, "Biomass_glmm10")
 lat_lon(glm10, "LatLon_glmm10")
+
+## filtering wet biomass method out and refitting 
+dat_filtered <- dat %>%
+  filter(BiomassMethod != "Wet") %>%
+  droplevels()
 
 ## Now increase the df 
 glm11 <- glmer(Biomass ~ BiomassMethod + Mesh + 
