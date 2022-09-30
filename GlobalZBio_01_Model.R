@@ -281,7 +281,7 @@ qqnorm(RE$Gear$`(Intercept)`)
 fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
 
-######################## Add lat*lon interaction ###########################
+####################### Add lat*lon interaction ########################
 glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 3)*ns(Longitude, df = 3) +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
@@ -293,7 +293,7 @@ glm9 <- glmer(Biomass ~ BiomassMethod + Mesh +
 
 summary(glm9)
 
-## SST and latitude are correllated, NorthHemis not required now 
+## SST and latitude are corellated, NorthHemis not required now 
 
 
 ################# Lat * Lon and SST #################
@@ -323,10 +323,6 @@ car::vif(glm10)
 fPlotBiomassGLM(glm10, "Biomass_glmm10")
 lat_lon(glm10, "LatLon_glmm10")
 
-## filtering wet biomass method out and refitting 
-dat_filtered <- dat %>%
-  filter(BiomassMethod != "Wet") %>%
-  droplevels()
 
 ## Now increase the df 
 glm11 <- glmer(Biomass ~ BiomassMethod + Mesh + 
@@ -341,5 +337,34 @@ glm11 <- glmer(Biomass ~ BiomassMethod + Mesh +
                family = Gamma(link = "log"), nAGQ = 0)
 
 ## plot predictors 
-fPlotBiomassGLM(glm11, "Biomass_glmm10")
-lat_lon(glm11, "LatLon_glmm10")
+fPlotBiomassGLM(glm11, "Biomass_glmm11")
+lat_lon(glm11, "LatLon_glmm11")
+
+anova(glm10, glm11)
+
+
+################ remove LatxLon surface ################
+glm12 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
+                 log10(Chl) + ns(Bathy, df = 3) +
+                 fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
+                 ns(SST, df = 3) +
+                 (1|Gear)  + (1|DatasetID),
+               data = dat,
+               family = Gamma(link = "log"), nAGQ = 0)
+
+fPlotBiomassGLM(glm12, "Biomass_glmm12")
+lat_lon(glm12, "LatLon_glmm12")
+
+summary(glm12)
+summary(glm10)
+
+## diagnostics 
+res <- simulateResiduals(glm12)
+plotQQunif(res)
+plot(residuals(glm12) ~ predict(glm12,type="link"),
+     xlab=expression(hat(eta)),ylab="Deviance residuals",
+     pch=20,col="blue")
+car::vif(glm12)
+
+
