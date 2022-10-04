@@ -345,7 +345,7 @@ anova(glm10, glm11)
 
 ################ remove LatxLon surface ################
 glm12 <- glmer(Biomass ~ BiomassMethod + Mesh + 
-                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
+                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + ns(Bathy, df = 3) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
                  ns(SST, df = 3) +
@@ -356,15 +356,18 @@ glm12 <- glmer(Biomass ~ BiomassMethod + Mesh +
 fPlotBiomassGLM(glm12, "Biomass_glmm12")
 lat_lon(glm12, "LatLon_glmm12")
 
+r.squaredGLMM(glm12)
 summary(glm12)
 summary(glm10)
 
 ## diagnostics 
 res <- simulateResiduals(glm12)
 plotQQunif(res)
+
 plot(residuals(glm12) ~ predict(glm12,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",
      pch=20,col="blue")
+
 car::vif(glm12)
 
 

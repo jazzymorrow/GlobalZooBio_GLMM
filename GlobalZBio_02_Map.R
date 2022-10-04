@@ -10,14 +10,14 @@ library(splines)
 #library(lmerTest)
 
 # IMPORT COPEPOD DATABASE BIOMASS GLMM
-mdl <- readRDS(file.path("Output","glm1.rds"))
+mdl <- readRDS(file.path("Output","glm12.rds"))
 
 ## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
 bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
 bathy_matrix <- t(as.matrix(bathy_data$Bathy))
 bathy_matrix <- bathy_matrix[,180:1]
 
-bathy_data <- rast(bathy_data) # this converts to terra file
+#bathy_data <- rast(bathy_data) # this converts to terra file
 
 ## SOME CODE TO EXPLORE THE RASTER FILE
 plot(bathy_data) #check out bathy map 
@@ -40,7 +40,8 @@ save_array <- array(NA, dim = c(12,13,64800)) # matches month, variable, bathy #
 dimnames(save_array)[[1]] <- c("Jan", "Feb", "Mar", "Apr", 
                                "May", "Jun", "Jul", "Aug", 
                                "Sep", "Oct", "Nov", "Dec")
-dimnames(save_array)[[2]] <- c("Lon", "Lat", "BiomassMethod", 
+dimnames(save_array)[[2]] <- c("Longitude", "Latitude", 
+                               "BiomassMethod", 
                                "Mesh", "Depth", "Gear", 
                                "Institution", "HarmTOD", 
                                "Bathy", "HarmDOY", "SST", 
@@ -72,7 +73,7 @@ k = 1 #currently only working with SST and CHL Jan
   
   print(paste("Now working on month", k,  sep = " "))
   mons_nh <- k # Northern hemisphere month
-  mons_sh <- mons_nh + 6 
+  mons_sh <- mons_nh #+ 6 
   # Southern hemisphere month, corrected to equivalent northern hemisphere month
   
   if (mons_sh[length(mons_sh)] > 12) {
@@ -96,8 +97,8 @@ k = 1 #currently only working with SST and CHL Jan
       "*", sep = "")), full.names = TRUE))))[, 180:1]
   
   ## Fill in this month's slice of save_array
-  save_array[k, "Lon", ] <- lonlat[, 1]
-  save_array[k, "Lat", ] <- lonlat[, 2]
+  save_array[k, "Longitude", ] <- lonlat[, 1]
+  save_array[k, "Latitude", ] <- lonlat[, 2]
   save_array[k, "Bathy", ] <- as.vector(bathy_matrix)
   
   save_array[k, "HarmDOY", c(1:32400)] <-
@@ -158,7 +159,7 @@ k = 1 #currently only working with SST and CHL Jan
     kk_deep$Depth <- depths[m]
     kk_deep$GLM_Mesozoo <-
       kk_deep$GLM_Mesozoo + exp(predict(
-        m7,
+        mdl,
         type = "link",
         newdata = kk_deep,
         re.form = NA,
@@ -190,7 +191,7 @@ k = 1 #currently only working with SST and CHL Jan
         kk_shallow[n, "GLM_Mesozoo"] <-
           kk_shallow[n, "GLM_Mesozoo"] + exp(
             predict(
-              m7,
+              mdl,
               type = "link",
               newdata = curr_kk,
               re.form = NA,
@@ -217,8 +218,8 @@ k = 1 #currently only working with SST and CHL Jan
   #kk$GLM_Mesozoo <- depth_int_pred
   
   ## Dump output into this month's time slice of save array2
-  save_array2[k, "Lon", ] <- as.vector(kk$Lon)
-  save_array2[k, "Lat", ] <- as.vector(kk$Lat)
+  save_array2[k, "Longitude", ] <- as.vector(kk$Longitude)
+  save_array2[k, "Latitude", ] <- as.vector(kk$Latitude)
   save_array2[k, "Bathy", ] <- as.vector(kk$Bathy)
   save_array2[k, "SST", ] <- as.vector(kk$SST)
   save_array2[k, "Chl", ] <- as.vector(kk$Chl)
@@ -237,7 +238,8 @@ saveRDS(save_array2,
 #### PLOT OUTPUT
 library(rasterImage)
 
-col <- rev(rasterImage::colorPalette(n = 14, type = "jet.colors"))
+col <- rev(rasterImage::colorPalette(n = 9, type = c("dark blue", "cream")))
+??colorbrewer
 
 theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent"),
                          panel.background = element_blank(),
@@ -256,14 +258,28 @@ theme_opts <- list(theme(panel.grid.major = element_line(colour = "transparent")
 
 
 ggplot(kk) +  
-  geom_raster(aes(x = Lon, y = Lat, fill = log10(GLM_Mesozoo))) +
+  geom_raster(aes(x = Longitude, y = Latitude, 
+                  fill = log(GLM_Mesozoo))) +
+  scale_fill_viridis_c(trans = "log10") #+
     scale_fill_gradientn(
       name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
-                         colours = rev(col),
+                         colours = RColorBrewer::brewer.pal(9, "YlGnBu"),
                          position = "bottom",
-                         na.value = "grey80")+ 
+                         na.value = "black")+ 
+    theme_dark() +
     theme_opts + ggtitle("January") +
-    theme(plot.title = element_text(size = rel(1.5)))
+    theme(plot.title = element_text(size = rel(1.5))) 
 
 dev.print(pdf, paste0("Figures/", "MapDraft", ".pdf"))
 
+## slightly different colour scheme 
+ggplot(kk) +  
+  geom_raster(aes(x = Longitude, y = Latitude, fill = log10(GLM_Mesozoo))) +
+  scale_fill_gradient2(
+    name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
+    low = "#253494", mid = "#41b6c4", high = "#ffffb2",
+    position = "bottom",
+    na.value = "black")+ 
+  theme_dark() +
+  theme_opts + ggtitle("January") +
+  theme(plot.title = element_text(size = rel(1.5))) 
