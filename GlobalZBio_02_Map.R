@@ -3,6 +3,7 @@ library(visreg)
 library(raster)
 library(ggplot2)
 library(terra)
+library(sf)
 #library(ncdf4) 
 library(dplyr)
 library(tidyverse)
@@ -26,9 +27,6 @@ bathy.df <- as.data.frame(bathy_data, xy = TRUE)
 ggplot() +  #gglot version of map 
   geom_raster(data = bathy.df, aes(x = x, y = y, fill = Bathy)) +
   scale_fill_viridis_c()
-
-length(bathy.df$Bathy)
-sum(is.na(bathy.df$Bathy)) #NAs represent land
 
 
 ## Calculate areas of grid cells
@@ -272,14 +270,38 @@ ggplot(kk) +
 
 dev.print(pdf, paste0("Figures/", "MapDraft", ".pdf"))
 
-## slightly different colour scheme 
-ggplot(kk) +  
-  geom_raster(aes(x = Longitude, y = Latitude, fill = log10(GLM_Mesozoo))) +
-  scale_fill_gradient2(
-    name = expression(paste("Log10 Mesozoo Biomass mg m"^-2)),
-    low = "#253494", mid = "#41b6c4", high = "#ffffb2",
-    position = "bottom",
-    na.value = "black")+ 
-  theme_dark() +
-  theme_opts + ggtitle("January") +
-  theme(plot.title = element_text(size = rel(1.5))) 
+
+####################################################
+## plot with projection 
+kk_sf <- kk %>%
+  sf::st_as_sf(coords=c("Longitude", "Latitude"))
+
+lonlat <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+
+sf::st_crs(kk_sf) <- lonlat
+
+landmass <- rnaturalearth::ne_countries(scale = "large") %>% 
+  # get the landmass like this
+  sf::st_as_sf(crs = lonlat)
+
+moll <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs" # This is the Mollweide equal-area projection. # longitude-latitude projection
+kk_transformed <- kk_sf %>%
+  sf::st_transform(moll)
+
+sf::st_crs(kk_transformed)
+
+landmass <- landmass %>% # Transform the landmass to the same projection...
+  sf::st_transform(crs = moll)
+
+
+ggplot() + 
+  geom_sf(data = landmass, fill = "grey20", color = NA, size = 0.01) +
+  geom_sf(data = kk_transformed, aes(color = GLM_Mesozoo), size = 0.01) +
+  scale_color_viridis_c(trans = "log10",
+                        na.value = "grey20",
+                        name = expression(paste("Z biomass mg m"^-2))) +
+  theme_minimal()
+
+
+
+

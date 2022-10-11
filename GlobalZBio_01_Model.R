@@ -26,12 +26,11 @@ dat <- dat %>%
     Depth2 = Depth/1000, #scaled depth variable 
     Bathy = replace(Bathy, Bathy > 7000, 7000),
     SST = replace(SST, SST > 31, 31),
-    NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemisphere variable
-    Biomass = replace(Biomass, Biomass > 10000, 10000)) 
+    NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemis indic
+    Biomass = replace(Biomass, Biomass > 10000, 10000)) %>% 
+  filter(Biomass > 0) ## remove 5 zero biomass measures 
 
-## remove 5 zero biomass measures 
-dat <- dat %>%
-  filter(Biomass > 0)
+  
 
 ## check for missing measures 
 sum(is.na(dat$Institution)) ##14274 missing institutions
@@ -54,6 +53,7 @@ sum(table(dat$Gear, dat$Institution)>0) /
 sum(table(dat$Gear, dat$Project)>0) / 
   (nlevels(dat$Gear) * nlevels(dat$Project)) * 100 #1.67%
 
+# check out number of gears used in each dataset
 tempory <- dat %>% 
   group_by(DatasetID) %>% 
   summarise(N = length(unique(Gear)))
@@ -345,7 +345,7 @@ anova(glm10, glm11)
 
 ################ remove LatxLon surface ################
 glm12 <- glmer(Biomass ~ BiomassMethod + Mesh + 
-                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
+                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + ns(Bathy, df = 3) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
                  ns(SST, df = 3) +
@@ -354,15 +354,15 @@ glm12 <- glmer(Biomass ~ BiomassMethod + Mesh +
                family = Gamma(link = "log"), nAGQ = 0)
 
 fPlotBiomassGLM(glm12, "Biomass_glmm12")
-lat_lon(glm12, "LatLon_glmm12")
+#lat_lon(glm12, "LatLon_glmm12")
 
 r.squaredGLMM(glm12)
 summary(glm12)
-summary(glm10)
 
 ## diagnostics 
 res <- simulateResiduals(glm12)
-plotQQunif(res)
+plotQQunif(res, testDispersion = F, testUniformity = F, 
+           testOutliers = F)
 
 plot(residuals(glm12) ~ predict(glm12,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",
@@ -370,4 +370,4 @@ plot(residuals(glm12) ~ predict(glm12,type="link"),
 
 car::vif(glm12)
 
-
+saveRDS(glm12, "Output/glm12.rds")
