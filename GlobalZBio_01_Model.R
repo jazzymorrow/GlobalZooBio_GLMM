@@ -296,7 +296,7 @@ summary(glm9)
 ## SST and latitude are corellated, NorthHemis not required now 
 
 
-################# Lat * Lon and SST #################
+################# Lat * Lon and SST ######################
 
 glm10 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 5)*ns(Longitude, df = 5) +
@@ -343,7 +343,7 @@ lat_lon(glm11, "LatLon_glmm11")
 anova(glm10, glm11)
 
 
-################ remove LatxLon surface ################
+#################### remove LatxLon surface ###################
 glm12 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                  exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + ns(Bathy, df = 3) +
@@ -359,7 +359,7 @@ fPlotBiomassGLM(glm12, "Biomass_glmm12")
 r.squaredGLMM(glm12)
 summary(glm12)
 
-## diagnostics 
+## diagnostics: look good
 res <- simulateResiduals(glm12)
 plotQQunif(res, testDispersion = F, testUniformity = F, 
            testOutliers = F)
@@ -368,6 +368,6 @@ plot(residuals(glm12) ~ predict(glm12,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",
      pch=20,col="blue")
 
-car::vif(glm12)
+car::vif(glm12) #all vifs good except for variables with interactions 
 
-saveRDS(glm12, "Output/glm12.rds")
+saveRDS(glm12, "Output/glm12.rds") #save output for mapping 

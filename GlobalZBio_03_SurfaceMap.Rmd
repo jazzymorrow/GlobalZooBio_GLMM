@@ -1,0 +1,198 @@
+---
+title: "GlobalZBio_03_SurfaceMap"
+author: "Jasmine Fowler-Morrow"
+date: '2022-10-17'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r preliminary}
+source("utils.R") # load the harmonic function
+library(visreg)
+library(raster)
+library(ggplot2)
+library(terra)
+library(sf)
+library(dplyr)
+library(tidyverse)
+library(splines)
+
+# IMPORT COPEPOD DATABASE BIOMASS GLMM
+mdl <- readRDS(file.path("Output","glm12.rds"))
+```
+
+
+
+```{r bathymetry}
+## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
+bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
+bathy_matrix <- t(as.matrix(bathy_data$Bathy))
+bathy_matrix <- bathy_matrix[,180:1]
+
+## Calculate areas of grid cells
+glob_area <- t(as.matrix(raster::area(raster())))
+```
+
+
+Create the dataframe to produce predictions. This currently has all 12 months however I may edit this based on what time scale I will be predicting over...
+
+```{r}
+##### Set up array to make predictions and save outputs ######
+save_array <- array(NA, dim = c(12,13,64800)) 
+# matches month x variable x bathy #
+dimnames(save_array)[[1]] <- c("Jan", "Feb", "Mar", "Apr", 
+                               "May", "Jun", "Jul", "Aug", 
+                               "Sep", "Oct", "Nov", "Dec")
+dimnames(save_array)[[2]] <- c("Longitude", "Latitude", 
+                               "BiomassMethod", 
+                               "Mesh", "Depth", "Gear", 
+                               "DatasetID", "HarmTOD", 
+                               "Bathy", "HarmDOY", "SST", 
+                               "Chl", "GLM_Mesozoo")
+
+## Set mesh, start depth and time of day
+save_array[,"Mesh",] <- 100 # we might want this at 0/25??
+save_array[,"Depth",] <- 1
+save_array[,"HarmTOD",] <- 0
+
+## Final output matrix, with non-important factors removed
+save_array2 <- save_array[,-c(3,4,5,6,7,8,10),] 
+#keeps lon, lat, bathy, predictions
+
+#Longitude x Latitude matrix
+lonlat <- as.matrix(expand.grid("lons" = -179.5:179.5, 
+                                "lats" = -89.5:89.5))
+
+## Harmonic day of year for each month
+days_of_year_harmonic <- seq(15,365,30)/365*2*pi
+
+## Depth is set to surface, this can be changed to a vector of depths...
+depth <- 0.5
+```
+
+Now predict surface biomass distribution for month k 
+
+```{r}
+k = 1 #currently only working with SST and CHL Jan
+
+
+## Import current month (k) sst and chl climatology
+curr_sst <- 
+  t(as.matrix(readRDS(list.files(
+    path = './Data/',
+    pattern = glob2rx(paste("SST*", 
+    dimnames(save_array)[[1]][k], "*", 
+    sep = "")), full.names = TRUE))))[, 180:1]
+  
+curr_chl <- 
+  t(as.matrix(readRDS(list.files(
+    path = './Data/',
+    pattern = glob2rx(paste("Chl*", 
+    dimnames(save_array)[[1]][k], 
+    "*", sep = "")), full.names = TRUE))))[, 180:1]
+
+## Fill in this month's slice of save_array
+save_array[k, "Longitude", ] <- lonlat[, 1]
+save_array[k, "Latitude", ] <- lonlat[, 2]
+save_array[k, "Bathy", ] <- as.vector(bathy_matrix)
+  
+save_array[k, "HarmDOY", c(1:32400)] <-
+  days_of_year_harmonic[k] # Southern hemisphere months
+  
+save_array[k, "HarmDOY", c(32401:64800)] <-
+  days_of_year_harmonic[k] # Northern hemisphere months
+  
+save_array[k, "SST", ] <- as.vector(curr_sst)
+save_array[k, "Chl", ] <- as.vector(curr_chl)
+
+#Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
+save_array[k, "SST", 
+           which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
+save_array[k, "Chl", 
+           which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
+```
+
+```{r}
+# Convert to dataframe and add random effects factors and 0.5m depth for glmm prediction
+kk <- as.data.frame(t(save_array[k, , ])) #df of month k only 
+kk$BiomassMethod <- as.factor("Carbon")
+kk$Gear <- as.factor("116")
+kk$DatasetID <- as.factor("100")
+kk$Depth <- depth
+
+####### SURFACE LAYER PREDICTIONS ########
+# Get surface layer estimate
+kk$GLM_Mesozoo <- (exp(predict(mdl,
+                               type = "link",
+                               newdata = kk,
+                               re.form = NA))) 
+```
+
+Haven't really worked with this yet. However, if we wish to loop over all 12 months, this will combine everything from month k back into output array.
+
+```{r}
+  ## Dump output into this month's time slice of save array2
+  save_array2[k, "Longitude", ] <- as.vector(kk$Longitude)
+  save_array2[k, "Latitude", ] <- as.vector(kk$Latitude)
+  save_array2[k, "Bathy", ] <- as.vector(kk$Bathy)
+  save_array2[k, "SST", ] <- as.vector(kk$SST)
+  save_array2[k, "Chl", ] <- as.vector(kk$Chl)
+  save_array2[k, "GLM_Mesozoo", ] <- as.vector(kk$GLM_Mesozoo)
+```
+
+
+## Plot with projection 
+```{r}
+## plot with projection 
+kk_sf <- kk %>%
+  sf::st_as_sf(coords=c("Longitude", "Latitude"))
+
+lonlat <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+
+sf::st_crs(kk_sf) <- lonlat
+
+landmass <- rnaturalearth::ne_countries(scale = "large") %>% 
+  sf::st_as_sf(crs = lonlat)
+
+# Mollweide equal-area projection
+moll <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs" 
+
+# Transform data using projection
+kk_transformed <- kk_sf %>%
+  sf::st_transform(moll)
+
+# Transform the landmass to the same projection
+landmass <- landmass %>% 
+  sf::st_transform(crs = moll)
+
+
+ggplot() + 
+  geom_sf(data = landmass, fill = "grey20", color = NA, size = 0.01) +
+  geom_sf(data = kk_transformed, aes(color = GLM_Mesozoo), size = 0.01) +
+  scale_color_viridis_c(trans = "log10",
+                        na.value = "grey20",
+                        name = expression(paste("Z biomass mg m"^-2))) +
+  theme_bw() 
+```
+Now let's see if the new plotting function will do this for me
+
+```{r}
+
+kk_transformed2 <- 
+  sf_transform_xy(kk_sf, target_crs = moll, source_crs = lonlat)
+
+ggplot() + 
+  geom_sf(data = landmass, fill = "grey20", color = NA, size = 0.01) +
+  geom_sf(data = kk_transformed2, aes(color = GLM_Mesozoo), size = 0.01) +
+  scale_color_viridis_c(trans = "log10",
+                        na.value = "grey20",
+                        name = expression(paste("Z biomass mg m"^-2))) +
+  theme_minimal()
+
+```
+

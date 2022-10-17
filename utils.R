@@ -209,7 +209,7 @@ fPlotBiomassGLM <- function (mdl, Name) {
   # Depth plot
   if(grepl("Depth2", Terms, fixed = TRUE)) {
     visreg(mdl, "Depth2", scale = "response", 
-           xlab = "Depth (m)", ylab = expression("Biomass"))}
+           xlab = "Depth (km)", ylab = expression("Biomass"))}
   
   # DOY plot
   if(grepl("HarmDOY", Terms, fixed = TRUE)) {
@@ -314,7 +314,7 @@ fPlotBiomassGLM <- function (mdl, Name) {
            breaks = c(-50, 0, 50), 
            xlab = "Day of Year", 
            ylab = expression("Biomass"),
-           strip.names = c("-50º", "0º", "50º"),
+           strip.names = c("50ºS", "0º", "50ºN"),
            xaxt = 'n')
     axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
          labels=c("1","91","182","273","365"))
