@@ -1,18 +1,11 @@
 ############ Preliminaries ################
-#library(lme4)
-#library(splines)
-#library(DHARMa)
-#library(MuMIn)
-#library(visreg)
-#library(mgcv)
 library(xgboost)
 library(caret)
 library(tidyverse)
 
-#source("utils.R") #harmonic and visreg functions
-
 dat <- readRDS("Data/GlobalBiomassData.rds") 
 
+# not sure if I should still do this reduction/transformation of predictors 
 dat <- dat %>% 
   mutate(
     HarmTOD = (TimeLocal/24)*2*pi, # Convert to radians
@@ -33,6 +26,7 @@ dat <- dat %>%
 set.seed(0)
 
 #split into training (80%) and testing set (20%)
+#by default, the split uses percentiles of y and has well balanced pred
 parts = createDataPartition(dat$Biomass, p = .8, list = F)
 
 # only include a few predictors for now 
@@ -79,8 +73,36 @@ ggplot(data = model$evaluation_log) +
 
 
 #-------------------------------------------------------
-                      # check accuracy
+                # check accuracy metrics?
 #-------------------------------------------------------
 mean((test_y - pred_y)^2) #mse
 MAE(test_y, pred_y) #mae
 RMSE(test_y, pred_y) #rmse
+
+
+#-------------------------------------------------------
+                  # try dismo package 
+#-------------------------------------------------------
+dismo::gbm.step(data = train,
+  gbm.x = -1, gbm.y = 1,
+                family = "gaussian", n.folds = 5,
+                learning.rate = 0.01)
+
+
+#-------------------------------------------------------
+                 # tune hyperparameters 
+#-------------------------------------------------------
+# prepare a grid of parameters for tuning
+# this is taken from Drago et al. 2022
+#https://github.com/dlaetitia/Global_zooplankton_biomass_distribution/blob/main/Scripts/1.model-fit_habitat_models.R
+
+eta_values = c(0.05, 0.075, 0.1)
+max_depth_values = c(2, 4, 6)
+min_child_weight_values = c(1, 3, 5)
+rs_grid <- param_grid(rs,
+# the CV resamples we will run for each parameter combination
+                      eta = eta_values,
+                      # learning rate
+                      max_depth = max_depth_values,
+                      # maximum depth of trees
+                      min_child_weight = min_child_weight_values)
