@@ -196,3 +196,8 @@ ggplot() +
 
 ```
 
+
+```{r}
+#use rowMeans na.rm = TRUE across monthly biomass predictions 
+```
+

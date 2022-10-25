@@ -5,17 +5,14 @@ library(tidyverse)
 
 dat <- readRDS("Data/GlobalBiomassData.rds") 
 
-# not sure if I should still do this reduction/transformation of predictors 
+# Reduce some extreme values, and remove 5 zero values  
 dat <- dat %>% 
   mutate(
-    HarmTOD = (TimeLocal/24)*2*pi, # Convert to radians
-    HarmDOY = (DOY/365)*2*pi, # Convert to radians
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
     Depth2 = Depth/1000, #scaled depth variable 
     Bathy = replace(Bathy, Bathy > 7000, 7000),
     SST = replace(SST, SST > 31, 31),
-    NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemisphere variable
     Biomass = replace(Biomass, Biomass > 10000, 10000)) %>%
   filter(Biomass > 0)
 
@@ -71,6 +68,7 @@ ggplot(data = model$evaluation_log) +
 # seems like gradient is very small after 200 rounds 
 # way better with gamma specified - 0.99 in first 50, 0.92 at 500
 
+#pred_y = predict()
 
 #-------------------------------------------------------
                 # check accuracy metrics?
@@ -96,13 +94,56 @@ dismo::gbm.step(data = train,
 # this is taken from Drago et al. 2022
 #https://github.com/dlaetitia/Global_zooplankton_biomass_distribution/blob/main/Scripts/1.model-fit_habitat_models.R
 
-eta_values = c(0.05, 0.075, 0.1)
-max_depth_values = c(2, 4, 6)
-min_child_weight_values = c(1, 3, 5)
-rs_grid <- param_grid(rs,
-# the CV resamples we will run for each parameter combination
-                      eta = eta_values,
-                      # learning rate
-                      max_depth = max_depth_values,
-                      # maximum depth of trees
-                      min_child_weight = min_child_weight_values)
+# need to look into nrounds and what I should select 
+
+cvmodel <- xgb.cv(params = list(objective = "reg:gamma",
+                     eta = 0.1,
+                     max_depth = 4),
+       data = xgb_train,
+       nrounds = 50, 
+       nfold = 5)
+
+cvmodel$evaluation_log$test_gamma_nloglik_mean
+
+
+#function that returns parameter grid - could be generalised 
+param_grid <- function(){
+  eta_vals = c(0.05, 0.075, 0.1)
+  max_depth_vals = c(2, 4, 6)
+  min_child_weight_vals = c(1, 3, 5)
+  nparams <- 3  
+  combos <- length(eta_vals)*length(max_depth_vals)*length(min_child_weight_vals)
+  eval <- data.frame(eta = rep(eta_vals, length.out = combos, 
+                               each = combos/nparams),
+                     max_depth = rep(max_depth_vals,
+                                     length.out = combos, 
+                                     each = sqrt(combos/nparams)),
+                     min_child = rep(min_child_weight_vals, 
+                                     length.out = combos))
+  
+}
+eval <- param_grid()
+
+
+for (i in 1:length(eval[, 1])) {
+  #train model with given parameter combination
+  cvmodel <- xgb.cv(
+    params = list(
+      objective = "reg:gamma",
+      eta = eval$eta[i],
+      max_depth = eval$max_depth[i],
+      min_child_weight = eval$min_child[i]),
+    data = xgb_train,
+    nrounds = 200, #still don't know about setting this 
+    nfold = 5)
+  #save model performance
+  eval$train_dev[i] <- cvmodel$evaluation_log$train_gamma_nloglik_mean[100]
+  eval$test_dev[i] <- cvmodel$evaluation_log$test_gamma_nloglik_mean[100]
+}
+eval
+which.min(eval$train_dev)
+which.min(eval$test_dev)
+eval[26,]
+#eta max_depth min_child train_dev  test_dev
+# 0.1         6         3 0.8851848 0.9214311
+# nrounds 
