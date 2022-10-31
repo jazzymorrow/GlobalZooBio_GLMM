@@ -94,9 +94,10 @@ m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh +
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
                    log10(Chl) + ns(Bathy, df = 3)+
                    ns(Bathy, df = 3) +
-                   ns(SST, df = 3)*fHarmonic(HarmDOY, k = 1) + 
+                   ns(Latitude, df = 3)*fHarmonic(HarmDOY, k = 1) + 
+                  ns(SST, df = 3) +
                    (1|Gear) + 
-                   (1|Institution),
+                   (1|DatasetID),
                  data = dat)
 #EndTime <- Sys.time()
 #EndTime - StartTime ## 17 sec
@@ -109,7 +110,7 @@ anova(m_loglinear)
 qqnorm(residuals(m_loglinear))
 qqline(residuals(m_loglinear))
 # variance homogeneity check
-plot(m_linear)
+plot(m_loglinear)
 ## plot of effects 
 fPlotBiomassLM(m_loglinear, "BiomassLogLM", Y_transform = 1)
 
@@ -348,8 +349,9 @@ glm12 <- glmer(Biomass ~ BiomassMethod + Mesh +
                  exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + ns(Bathy, df = 3) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
-                 ns(SST, df = 3) +
-                 (1|Gear)  + (1|DatasetID),
+                 ns(SST, df = 3) + 
+                 (1|Gear) +
+                 (1|DatasetID),
                data = dat,
                family = Gamma(link = "log"), nAGQ = 0)
 
@@ -368,6 +370,6 @@ plot(residuals(glm12) ~ predict(glm12,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",
      pch=20,col="blue")
 
-car::vif(glm12) #all vifs good except for variables with interactions 
+car::vif(glm12, type = 'predictor') #all vifs good except for variables with interactions 
 
 saveRDS(glm12, "Output/glm12.rds") #save output for mapping 

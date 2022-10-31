@@ -292,3 +292,5 @@ ggplot() +
 
 
 
+## Next step: do uncertainty map for annual mean surface biomass 
+
