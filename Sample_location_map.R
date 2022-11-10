@@ -1,3 +1,5 @@
+## Maps and visuals of the zooplankton biomass data for the report ##
+
 ## Produce a map of all observations 
 library(tidyverse)
 library(ggplot2)
@@ -67,11 +69,46 @@ ggplot() +
                                   "#0072B2", "#F0E442")) +
   guides(colour = guide_legend(override.aes = list(size = 2, 
                                                    alpha = 1))) +
-  theme_bw()
+  theme_classic() 
+  
 
-dev.print(pdf, paste0("Figures/", "SampleMap", ".pdf"))
-#wesanderson::wes_palette("Zissou1", n = 5)
+ggsave("./Figures/SampleMap.jpeg", dpi = 400, height = 5, width = 7)
 
+
+ggplot(dat, aes(x = Latitude)) +
+  geom_bar(stat="identity") + #make the bars
+  coord_flip() + #flip the axes so the test names can be horizontal  
+  theme_bw(base_size=10)+ #use a black-and0white theme with set font size
+  geom_density(stat = "identity", alpha = 0.3, aes(group = momento, fill = momento))
+
+#---------------------------------------------------------
+                  # hist over latitude 
+#---------------------------------------------------------
+## create a column for ocean area at each latitude 
+glob_area <- as.matrix(raster::area(raster()))
+lat_area <- rowSums(glob_area)
+
+## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
+bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
+bathy_matrix <- as.matrix(bathy_data$Bathy)
+bathy_matrix <- bathy_matrix[180:1,]
+
+prop_ocean <- (apply(bathy_matrix, 1, function(x) sum(!is.na(x))))/360
+
+area_ocean <- prop_ocean * lat_area
+
+## Plot of data versus latitude 
+ggplot() +
+  geom_histogram(data = dat, aes(y = Latitude, after_stat(density)), col = "grey10") +
+  theme_classic() +
+  labs(x = "Density") +
+  scale_y_continuous(breaks = c(-50,0,50),
+                     labels = c(expression(50~degree~S),
+                                expression(0~degree),
+                                expression(50~degree~N)))
+
+
+  geom_line(aes(y = prop_ocean, x = 1:180)) 
 #---------------------------------------------------------
                 # data distribution plots
 #---------------------------------------------------------
@@ -97,7 +134,7 @@ p2 <- ggplot() + geom_bar(data = dat, aes(x = Year),
 p3 <- ggplot() + geom_histogram(data = dat, aes(x = Mesh), 
                                 bins = 40, fill = "grey40", 
                                 col = "grey8") +
-  labs(x = expression(paste("Net mesh size (", mu,M, ")")), y = "Count") +
+  labs(x = expression(paste("Net mesh size (", mu,m, ")")), y = "Count") +
   xlim(0,1000) +
   theme_bw() 
 
@@ -116,6 +153,8 @@ p5 <- ggplot() + geom_histogram(data = dat, aes(x = Depth),
   xlim(0,1600) +
   theme_bw()
 
+## COMBINED PLOT
 (p1 | p2 )/( p3 | p4 | p5) + plot_annotation(tag_levels = 'A')
 
-ggsave("./Figures/biomass_dat_plots.png")
+ggsave("./Figures/biomass_dat_plots.jpeg", 
+       width = 7, height = 5, dpi = 400)
