@@ -168,10 +168,10 @@ fPlotBiomassGLM <- function (mdl, Name) {
   #Extract model terms
   Terms <- as.character(mdl@call)[2]
   # set figure dimensions/row number 
-  x11(width = 12, height = 6)
+  x11(width = 10, height = 6)
   if (length(mdl@frame) <= 8){r <- 2} else{r <- 3} 
-  #plus one because 3-way interactions will have too many plots
-  par(mfrow = c(r,4), mar = c(4,4,2,2))
+
+  par(mfrow = c(r,3), mar = c(4,4,2,2))
   
   #Biomass method plot
   if(grepl("BiomassMethod", Terms, fixed = TRUE)) {
@@ -197,28 +197,28 @@ fPlotBiomassGLM <- function (mdl, Name) {
            xlab = "Bathy (m)", 
            ylab = expression("Biomass"))}
   
-  ## time of day plot
-  if(grepl("HarmTOD", Terms, fixed = TRUE)) {
-    visreg(mdl, "HarmTOD", rug = FALSE, 
-           scale = "response", xlab = "Time of Day", 
-           xaxt = 'n', ylab = expression("Biomass"))
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
-         labels=c("00:00","06:00","12:00","18:00","00:00"))
-  }
-  
-  # Depth plot
-  if(grepl("Depth2", Terms, fixed = TRUE)) {
-    visreg(mdl, "Depth2", scale = "response", 
-           xlab = "Depth (km)", ylab = expression("Biomass"))}
-  
-  # DOY plot
-  if(grepl("HarmDOY", Terms, fixed = TRUE)) {
-    visreg(mdl, "HarmDOY", scale = "response", 
-           xlab = "Day of Year", xaxt = 'n', 
-           ylab = expression("Biomass"))
-    axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
-         labels=c("1","91","182","273","365"))
-  }
+  # ## time of day plot
+  # if(grepl("HarmTOD", Terms, fixed = TRUE)) {
+  #   visreg(mdl, "HarmTOD", rug = FALSE, 
+  #          scale = "response", xlab = "Time of Day", 
+  #          xaxt = 'n', ylab = expression("Biomass"))
+  #   axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+  #        labels=c("00:00","06:00","12:00","18:00","00:00"))
+  # }
+  # 
+  # # Depth plot
+  # if(grepl("Depth2", Terms, fixed = TRUE)) {
+  #   visreg(mdl, "Depth2", scale = "response", 
+  #          xlab = "Depth (km)", ylab = expression("Biomass"))}
+  # 
+  # # DOY plot
+  # if(grepl("HarmDOY", Terms, fixed = TRUE)) {
+  #   visreg(mdl, "HarmDOY", scale = "response", 
+  #          xlab = "Day of Year", xaxt = 'n', 
+  #          ylab = expression("Biomass"))
+  #   axis(side=1, at=c(0, pi/2 , pi, pi + pi/2, pi*2), 
+  #        labels=c("1","91","182","273","365"))
+  # }
   
   #SST plot
   if(grepl("SST", Terms, fixed = TRUE)) {

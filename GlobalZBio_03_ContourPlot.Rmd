@@ -1,0 +1,226 @@
+---
+title: "GlobalZBio_04_CountourPlot"
+author: "Jasmine Fowler-Morrow"
+date: '2022-10-31'
+output: pdf_document
+---
+
+
+```{r preliminary}
+source("utils.R") # load the harmonic function
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(splines)
+library(raster)
+library(patchwork)
+
+# IMPORT COPEPOD DATABASE BIOMASS GLMM
+mdl <- readRDS(file.path("Output","glm12.rds"))
+
+```
+In this file I am fixing longitude to a particular value, and looping through various depths to create a latitude x depth contour plot. 
+
+```{r bathymetry}
+## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
+bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
+bathy_matrix <- t(as.matrix(bathy_data$Bathy))
+bathy_matrix <- bathy_matrix[,180:1] 
+```
+
+
+```{r}
+##### Set up array to make predictions and save outputs ######
+save_array <- array(NA, dim = c(12,13,180)) 
+# matches month x variable x bathy #
+dimnames(save_array)[[1]] <- c("Jan", "Feb", "Mar", "Apr", 
+                               "May", "Jun", "Jul", "Aug", 
+                               "Sep", "Oct", "Nov", "Dec")
+dimnames(save_array)[[2]] <- c("Longitude", "Latitude", 
+                               "BiomassMethod", 
+                               "Mesh", "Depth", "Gear", 
+                               "DatasetID", "HarmTOD", 
+                               "Bathy", "HarmDOY", "SST", 
+                               "Chl", "GLM_Mesozoo")
+
+## Set mesh, start depth and time of day
+save_array[,"Mesh",] <- 25 # we might want this at 0/25??
+save_array[,"Depth",] <- 1
+save_array[,"HarmTOD",] <- 0
+
+
+#Longitude x Latitude matrix
+lonlat <- as.matrix(expand.grid("lons" = -30, 
+                                "lats" = -89.5:89.5))
+
+## Harmonic day of year for each month
+days_of_year_harmonic <- seq(15,365,30)/365*2*pi
+
+## vector of depths top 200m
+depth <- 0.5:199.5
+```
+
+
+```{r}
+#-----------------------------------------------------
+ # Function to produce predictions at fixed longitude
+#-----------------------------------------------------
+contourplot <- function(Long, months = c(12,1,2)){
+  
+  ## convert long -180:180 to index 1:360
+  Long <- Long + 181
+  ## take bathymetry at longitude
+  bathy <- bathy_matrix[Long,] 
+  
+  ## Calculate areas of grid cells
+  glob_area <- t(as.matrix(raster::area(raster())))[Long,]
+  pred_list <- list()
+  
+  for (i in 1:3){ #need to produce this for December to Feb 
+    
+    k <- months[i] ## need to fix this 
+    
+    ## set up data frame to store predictions for dept x lat 
+    predictions <- as.data.frame(matrix(NA, nrow = length(depth), ncol = 180))
+    colnames(predictions) <- lonlat[,2]
+    predictions$depth <- depth
+    
+    ## Import current month (k) sst and chl climatology
+    curr_sst <- 
+      t(as.matrix(readRDS(list.files(
+        path = './Data/',
+        pattern = glob2rx(paste("SST*", 
+                                dimnames(save_array)[[1]][k], "*", 
+                                sep = "")), 
+        full.names = TRUE))))[, 180:1] 
+    
+    curr_chl <- 
+      t(as.matrix(readRDS(list.files(
+        path = './Data/',
+        pattern = glob2rx(paste("Chl*", 
+                                dimnames(save_array)[[1]][k], 
+                                "*", sep = "")), 
+        full.names = TRUE))))[, 180:1]
+    
+    ## Fill in this month's slice of save_array
+    save_array[k, "Longitude", ] <- lonlat[, 1]
+    save_array[k, "Latitude", ] <- lonlat[, 2]
+    save_array[k, "Bathy", ] <- as.vector(bathy)
+    
+    ## NEEDS CHANGING 
+    save_array[k, "HarmDOY", c(1:180)] <-
+      days_of_year_harmonic[k] # global months
+    
+    
+    ## SST and Chl but only at longitude = 30W
+    save_array[k, "SST", ] <- as.vector(curr_sst[Long,])
+    save_array[k, "Chl", ] <- as.vector(curr_chl[Long,])
+    
+    #Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
+    save_array[k, "SST", 
+               which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
+    save_array[k, "Chl", 
+               which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
+    
+    kk <- as.data.frame(t(save_array[k, , ])) #df of month k only 
+    kk$BiomassMethod <- as.factor("Carbon")
+    kk$Gear <- as.factor("116")
+    kk$DatasetID <- as.factor("100")
+    
+    
+    for (d in 1:length(depth)){
+      
+      kk$Depth <- depth[d]
+      
+      kk$GLM_Mesozoo <- (exp(predict(mdl,
+                                     type = "link",
+                                     newdata = kk,
+                                     re.form = NA)))
+      
+      predictions[d,-181] <- kk$GLM_Mesozoo
+      
+    }
+    pred_name <- paste0("predictions",k) #name based on month 
+    pred_list[[pred_name]] <- predictions #store each month df in list
+    
+  }
+  
+  ## now take average prediction
+  mean_pred <- as.data.frame(matrix(NA, nrow = length(depth), ncol = 180))
+  colnames(mean_pred) <- lonlat[,2]
+  mean_pred$depth <- depth
+  
+  ## take the monthly mean at each depth 
+  for (i in 1:length(depth)){
+    mean_pred[i,-181] <- colMeans(rbind(pred_list$predictions12[i,-181], 
+                                        pred_list$predictions1[i,-181],
+                                        pred_list$predictions2[i,-181]), na.rm = TRUE)
+    
+  }
+  
+  ## Pivot the predictions for plotting 
+  mean_pred <- mean_pred %>%
+    pivot_longer(-depth, names_to = "Latitude", values_to = "biomass")
+  mean_pred$Latitude <- as.numeric(mean_pred$Latitude)
+  return(mean_pred)
+}
+```
+
+
+```{r}
+
+## ATLANTIC OCEAN PLOT 
+pred_30W <- contourplot(Long = -30)
+
+p_30W <- ggplot(dat = pred_30W, aes(x = Latitude, y = depth, fill = biomass)) +
+  geom_tile()+
+  scale_fill_distiller(palette = "Spectral", direction = -1,
+                       name = expression(paste("Zooplankton biomass mg m"^-3)),
+                       limits = c(0.01,30),
+                       oob = scales::squish) +
+  scale_x_continuous(breaks = c(-50,0,50),
+                     labels = c(expression(50~degree~S),
+                                expression(0~degree),
+                                expression(50~degree~N))) +
+  labs(y = "Depth (m)") + theme_minimal() +
+  scale_y_reverse() + 
+  ggtitle("Atlantic Ocean")
+
+## PACIFIC OCEAN PLOT 
+pred_160W <- contourplot(Long = -160)
+
+p_160W <- ggplot(dat = pred_160W, aes(x = Latitude, y = depth, fill = biomass)) +
+  geom_tile()+
+  scale_fill_distiller(palette = "Spectral", direction = -1,
+                       name = expression(paste("Zooplankton biomass mg m"^-3)),
+                       limits = c(0.01,30),
+                       oob = scales::squish) +
+  scale_x_continuous(breaks = c(-50,0,50),
+                     labels = c(expression(50~degree~S),
+                                expression(0~degree),
+                                expression(50~degree~N))) +
+  labs(y = "Depth (m)") + theme_minimal() +
+  scale_y_reverse() + 
+  ggtitle("Pacific Ocean")
+
+
+
+```
+
+```{r}
+
+## patchwork of two contour plots 
+
+p_30W / p_160W +
+  plot_layout(guides = "collect") & theme(legend.position = "bottom",
+                                          plot.margin = margin(0.25,0.25,0.25,0.25),
+                                          plot.title = element_text(size = 9),
+                                          plot.tag = element_text(size = 9,
+                                          hjust = 3, vjust = -3))
+
+
+ggsave("./Figures/Depth_Lat_Contour.jpeg", height = 7, width = 7,
+       dpi = 320)
+
+```
+

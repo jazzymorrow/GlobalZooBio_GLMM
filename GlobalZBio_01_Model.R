@@ -31,7 +31,7 @@ dat <- dat %>%
   filter(Biomass > 0) ## remove 5 zero biomass measures 
 
   
-
+########### Prelim exploration of data #############
 ## check for missing measures 
 sum(is.na(dat$Institution)) ##14274 missing institutions
 sum(is.na(dat$Project)) ## 55544
