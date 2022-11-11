@@ -1,4 +1,6 @@
+#-----------------------------------------------------------------
 ## Maps and visuals of the zooplankton biomass data for the report ##
+#-----------------------------------------------------------------
 
 ## Produce a map of all observations 
 library(tidyverse)

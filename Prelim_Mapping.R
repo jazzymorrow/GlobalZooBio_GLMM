@@ -1,3 +1,8 @@
+#------------------------------------------------------
+ ## Initial Mapping - not used for final report/results
+#------------------------------------------------------
+#inital code for mapping that I used before improving it 
+
 source("utils.R") # load the harmonic function
 library(visreg)
 library(raster)
