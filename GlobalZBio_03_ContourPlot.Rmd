@@ -154,7 +154,8 @@ contourplot <- function(Long, months = c(12,1,2)){
   for (i in 1:length(depth)){
     mean_pred[i,-181] <- colMeans(rbind(pred_list$predictions12[i,-181], 
                                         pred_list$predictions1[i,-181],
-                                        pred_list$predictions2[i,-181]), na.rm = TRUE)
+                                        pred_list$predictions2[i,-181]), 
+                                  na.rm = TRUE)
     
   }
   
@@ -186,6 +187,8 @@ p_30W <- ggplot(dat = pred_30W, aes(x = Latitude, y = depth, fill = biomass)) +
   scale_y_reverse() + 
   ggtitle("Atlantic Ocean")
 
+
+
 ## PACIFIC OCEAN PLOT 
 pred_160W <- contourplot(Long = -160)
 
@@ -209,7 +212,7 @@ p_160W <- ggplot(dat = pred_160W, aes(x = Latitude, y = depth, fill = biomass)) 
 
 ```{r}
 
-## patchwork of two contour plots 
+## Patchwork of two contour plots 
 
 p_30W / p_160W +
   plot_layout(guides = "collect") & theme(legend.position = "bottom",

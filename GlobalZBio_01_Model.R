@@ -1,4 +1,4 @@
-############ Preliminaries ################
+### Preliminaries ----
 library(tidyverse)
 library(lme4)
 library(ggplot2)
@@ -9,33 +9,43 @@ library(visreg)
 
 source("utils.R") #harmonic and visreg functions
 
-#####################################################
-##             Data and modifications              ##
-#####################################################
 
-dat <- readRDS("Data/GlobalBiomassData.rds") 
+## Data and modifications ----
+
+dat <- readRDS("Data/GlobalBiomassDataUpdated.rds") 
+
+
+## code to creat DOY and Depth column: Not currently needed
+#dat$Date <- as.Date(paste(dat$Day,dat$Month,dat$Year, sep = "-"), "%d-%m-%Y") 
+## create day of year column
+#dat$DOY <- lubridate::yday(dat$Date)
+## create depth column 
+#dat$Depth <- (dat$LowerZ + dat$UpperZ)/2
+
 
 ## Reduce (but don't remove) some extreme values: 
-### as in GlobalZooBio_01_Model.R
+# as in (Heneghan et al., 2020)
+
 dat <- dat %>% 
   mutate(
     HarmTOD = (TimeLocal/24)*2*pi, # Convert to radians
     HarmDOY = (DOY/365)*2*pi, # Convert to radians
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
-    Depth2 = Depth/1000, #scaled depth variable 
+    Depth2 = Depth/1000,  #scaled depth variable 
     Bathy = replace(Bathy, Bathy > 7000, 7000),
-    SST = replace(SST, SST > 31, 31),
+    Thetao = replace(Thetao, Thetao > 31, 31),
     NorthHemis = as.factor(ifelse(Latitude >= 0, 1,0)), #hemis indic
-    Biomass = replace(Biomass, Biomass > 10000, 10000)) %>% 
-  filter(Biomass > 0) ## remove 5 zero biomass measures 
+    Biomass = replace(Biomass, Biomass > 10000, 10000)) 
+
 
   
-########### Prelim exploration of data #############
+#### Prelim exploration of data ----
+
 ## check for missing measures 
-sum(is.na(dat$Institution)) ##14274 missing institutions
-sum(is.na(dat$Project)) ## 55544
-sum(is.na(dat$Tow)) #2132 missing 
+sum(is.na(dat$Institution)) ##14547 missing institutions
+sum(is.na(dat$Project)) ## 56811
+sum(is.na(dat$Tow)) #3194 missing 
 sum(is.na(dat$DatasetID)) # nothing missing 
 
 
@@ -47,21 +57,22 @@ nlevels(dat$Institution)
 nlevels(dat$DatasetID)
 
 sum(table(dat$Gear, dat$DatasetID)>0) / 
-  (nlevels(dat$Gear) * nlevels(dat$DatasetID)) *100 #1.74%
+  (nlevels(dat$Gear) * nlevels(dat$DatasetID)) *100 #2.11%
 sum(table(dat$Gear, dat$Institution)>0) / 
-  (nlevels(dat$Gear) * nlevels(dat$Institution)) *100 #1.91%
+  (nlevels(dat$Gear) * nlevels(dat$Institution)) *100 #2.22%
 sum(table(dat$Gear, dat$Project)>0) / 
-  (nlevels(dat$Gear) * nlevels(dat$Project)) * 100 #1.67%
+  (nlevels(dat$Gear) * nlevels(dat$Project)) * 100 #1.95%
 
 # check out number of gears used in each dataset
-tempory <- dat %>% 
+temp <- dat %>% 
   group_by(DatasetID) %>% 
   summarise(N = length(unique(Gear)))
 
-###############################################################
-##                  fitting lmms                             ##
-###############################################################
-## linear mixed model
+
+
+### LMMs ----
+
+#### No transformation ----
 #StartTime <- Sys.time()
 m_linear <- lmer(Biomass ~ BiomassMethod + Mesh + 
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
@@ -76,8 +87,10 @@ m_linear <- lmer(Biomass ~ BiomassMethod + Mesh +
 # Residual normality check
 qqnorm(residuals(m_linear))
 qqline(residuals(m_linear))
+
 # variance homogeneity check
 plot(m_linear)
+
 ## plot of effects 
 fPlotBiomassLM(m_linear, "BiomassLM", Y_transform = 0)
 
@@ -87,9 +100,9 @@ dotplot.ranef.mer(RE)$Institution ##check plots of Random effects
 
 saveRDS(m_linear, "Output/m_linear.rds")
 
-#############################################################
-## linear mixed model with log10 response variable 
-#StartTime <- Sys.time()
+
+#### Log10 response variable ----
+
 m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh + 
                    exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) +
                    log10(Chl) + ns(Bathy, df = 3)+
@@ -99,8 +112,7 @@ m_loglinear <- lmer(log10(Biomass) ~ BiomassMethod + Mesh +
                    (1|Gear) + 
                    (1|DatasetID),
                  data = dat)
-#EndTime <- Sys.time()
-#EndTime - StartTime ## 17 sec
+
 
 ## produces warning messages about variable scale 
 summary(m_loglinear)
@@ -109,6 +121,7 @@ anova(m_loglinear)
 # Residual normality check
 qqnorm(residuals(m_loglinear))
 qqline(residuals(m_loglinear))
+
 # variance homogeneity check
 plot(m_loglinear)
 ## plot of effects 
@@ -123,20 +136,21 @@ dotplot.ranef.mer(RE) ##check plots of Random effects
 saveRDS(m_loglinear, "Output/m_loglinear.rds")
 
 
-###############################################################
-##                fitting gamma glmms                        ##
-###############################################################
-#StartTime <- Sys.time()
-glm1 <- glmer(Biomass ~ BiomassMethod + Mesh +
-              exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
-              log10(Chl) + ns(Bathy, df = 3) +
-              fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
-             (1|Gear) + (1|Institution),
+
+### Gamma GLMMs  ----
+
+#### Mdl 1 ----
+
+glm1 <- glmer(Biomass ~ BiomassMethod + 
+                Mesh + 
+                exp(-Depth/1000) * fHarmonic(HarmTOD, k = 1) + 
+                log10(Chl) + ns(Bathy, df = 3) +
+                fHarmonic(HarmDOY, k = 1) * ns(SST, df = 3) +
+                (1|Gear) + 
+                (1|Institution),
            data = dat,
            family = Gamma(link = "log"), nAGQ = 0)
-#EndTime <- Sys.time()
-#EndTime - StartTime 
-## n = 30000: 15.7 minutes, 6.5 secs if nAGQ = 0
+
 
 #model assessment
 r.squaredGLMM(glm1)
@@ -165,7 +179,7 @@ RE <- ranef(glm1)
 qqnorm(RE$Institution$`(Intercept)`)
 qqnorm(RE$Gear$`(Intercept)`)
 
-############ Find outliers, fit new model to compare ##################
+#### Mdl 2: Find outliers, fit new model to compare ----
 hist(dat$Biomass[dat$Biomass>4000]) #58 measures
 hist(dat$Biomass[dat$Biomass>8000]) #15
 
@@ -194,7 +208,7 @@ summary(glm2)
 #estimates all look pretty similar
 #outliers clearly aren't overly influential 
 
-#################### GLMM without interactions ######################
+#### Mdl 3: GLMM without interactions ----
 glm3 <- glmer(Biomass ~ BiomassMethod + Mesh +
               exp(-Depth/1000) + fHarmonic(HarmTOD, k = 1) + 
               log10(Chl) + ns(Bathy, df = 3) +
@@ -209,7 +223,7 @@ anova(glm1,glm3)
 ## glm1 best model so far 
 
 
-################### GLMM with depth:TOD, SST:DOY ###############
+#### Mdl 4: with depth:TOD, SST:DOY ----
 glm4 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000):fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
@@ -222,7 +236,7 @@ car::vif(glm1)
 anova(glm1, glm4) #AIC
 ## no multicollinearity but glmm1 is still better 
 
-################ add tow as a predictor #####################
+#### Mdl 5: add tow as a predictor ----
 glm5 <- glmer(Biomass ~ BiomassMethod + Mesh + Tow +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
@@ -233,7 +247,7 @@ glm5 <- glmer(Biomass ~ BiomassMethod + Mesh + Tow +
 summary(glm5) #Tow coefficient estimates not significant 
 summary(glm1) 
 
-################ add hemisphere factor #####################
+#### Mdl 6: add hemisphere factor ----
 glm6 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
@@ -246,7 +260,7 @@ summary(glm1)
 anova(glm1, glm6) #Lots more parameters but has lower deviance/BIC???
 
 
-################ Test different random effects ################
+#### Mdl 7: Test different random effects ----
 glm7 <- glmer(Biomass ~ BiomassMethod + Mesh +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                 log10(Chl) + ns(Bathy, df = 3) +
@@ -282,7 +296,7 @@ qqnorm(RE$Gear$`(Intercept)`)
 fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
 
-####################### Add lat*lon interaction ########################
+####################### Add lat*lon interaction ###################
 glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 3)*ns(Longitude, df = 3) +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
@@ -294,7 +308,7 @@ glm9 <- glmer(Biomass ~ BiomassMethod + Mesh +
 
 summary(glm9)
 
-## SST and latitude are corellated, NorthHemis not required now 
+## SST and latitude are correlated, NorthHemis not required now 
 
 
 ################# Lat * Lon and SST ######################
@@ -325,7 +339,7 @@ fPlotBiomassGLM(glm10, "Biomass_glmm10")
 lat_lon(glm10, "LatLon_glmm10")
 
 
-## Now increase the df 
+#### Mdl 11: increase DF ----
 glm11 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                  ns(Latitude, df = 7)*ns(Longitude, df = 7) +
                  exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
@@ -344,19 +358,20 @@ lat_lon(glm11, "LatLon_glmm11")
 anova(glm10, glm11)
 
 
-#################### remove LatxLon surface ###################
-glm12 <- glmer(Biomass ~ BiomassMethod + Mesh + 
+#### Mdl Final ----
+glm12 <- glmer(Biomass ~ BiomassMethod + 
+                 Mesh + 
                  exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
-                 log10(Chl) + ns(Bathy, df = 3) +
+                 log10(Chl) + 
+                 ns(Bathy, df = 4) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
-                 ns(SST, df = 3) + 
+                 ns(Thetao, df = 4) + 
                  (1|Gear) +
                  (1|DatasetID),
                data = dat,
                family = Gamma(link = "log"), nAGQ = 0)
 
 fPlotBiomassGLM(glm12, "Biomass_glmm12")
-#lat_lon(glm12, "LatLon_glmm12")
 
 r.squaredGLMM(glm12)
 summary(glm12)
@@ -370,6 +385,7 @@ plot(residuals(glm12) ~ predict(glm12,type="link"),
      xlab=expression(hat(eta)),ylab="Deviance residuals",
      pch=20,col="blue")
 
-car::vif(glm12, type = 'predictor') #all vifs good except for variables with interactions 
+car::vif(glm12, type = 'predictor') 
+#all vifs good except for variables with interactions 
 
-saveRDS(glm12, "Output/glm12.rds") #save output for mapping 
+saveRDS(glm12, "Output/Newglm12.rds") #save output for mapping 

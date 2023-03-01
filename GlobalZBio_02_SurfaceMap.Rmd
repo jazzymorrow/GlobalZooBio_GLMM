@@ -18,7 +18,7 @@ library(tidyverse)
 library(splines)
 library(patchwork)
 
-# IMPORT BIOMASS GLMM
+# IMPORT BIOMASS GLMM RDS FILE
 mdl <- readRDS(file.path("Output","glm12.rds"))
 ```
 
@@ -35,7 +35,7 @@ glob_area <- t(as.matrix(raster::area(raster())))
 ```
 
 
-Create the dataframe/array to produce predictions. This currently has all 12 months however I may edit this based on what time scale I will be predicting over...
+Create the dataframe/array to produce predictions
 
 ```{r}
 ##### Set up array to make predictions and save outputs ######
@@ -48,7 +48,7 @@ dimnames(save_array)[[2]] <- c("Longitude", "Latitude",
                                "BiomassMethod", 
                                "Mesh", "Depth", "Gear", 
                                "DatasetID", "HarmTOD", 
-                               "Bathy", "HarmDOY", "SST", 
+                               "Bathy", "HarmDOY", "Thetao", 
                                "Chl", "GLM_Mesozoo")
 
 ## Set mesh, start depth and time of day
@@ -60,7 +60,7 @@ save_array[,"HarmTOD",] <- 0
 save_array2 <- save_array[,-c(3,4,5,6,7,8,10),] 
 #keeps lon, lat, bathy, predictions
 
-#Longitude x Latitude matrix
+#Create a Longitude x Latitude matrix
 lonlat <- as.matrix(expand.grid("lons" = -179.5:179.5, 
                                 "lats" = -89.5:89.5))
 
@@ -75,7 +75,7 @@ depth <- 0.5
 Now predict surface biomass distribution  
 
 ```{r}
-
+## LOOP OVER EACH MONTH FOR BIOMASS PREDICTION
 for (k in 1:12){
   print(paste0("Now working on month ",k))
   
@@ -102,23 +102,25 @@ for (k in 1:12){
     days_of_year_harmonic[k] # Southern hemisphere months
   
   save_array[k, "HarmDOY", c(32401:64800)] <-
-    days_of_year_harmonic[k] # Northern hemisphere months
+    days_of_year_harmonic[k] # Northern hemisphere months 
   
-  save_array[k, "SST", ] <- as.vector(curr_sst)
+  # input monthly SST and Chl 
+  save_array[k, "Thetao", ] <- as.vector(curr_sst)
   save_array[k, "Chl", ] <- as.vector(curr_chl)
   
   #Align SST and chlo maps with bathy (where bathy is land, mask sst and chlo)
-  save_array[k, "SST", 
+  save_array[k, "Thetao", 
              which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
   save_array[k, "Chl", 
              which(is.na(save_array[k, "Bathy", ] == TRUE))] <- NA
   
+  
   # Convert to dataframe and add random effects factors and 0.5m depth for glmm prediction
-  kk <- as.data.frame(t(save_array[k, , ])) #df of month k only 
+  kk <- as.data.frame(t(save_array[k, , ])) #dataframe of month k only 
   kk$BiomassMethod <- as.factor("Carbon")
   kk$Gear <- as.factor("116")
   kk$DatasetID <- as.factor("100")
-  kk$Depth <- depth
+  kk$Depth2 <- depth
   
   ####### SURFACE LAYER PREDICTIONS ########
   # Get surface layer estimate
@@ -131,7 +133,7 @@ for (k in 1:12){
   save_array2[k, "Longitude", ] <- as.vector(kk$Longitude)
   save_array2[k, "Latitude", ] <- as.vector(kk$Latitude)
   save_array2[k, "Bathy", ] <- as.vector(kk$Bathy)
-  save_array2[k, "SST", ] <- as.vector(kk$SST)
+  save_array2[k, "Thetao", ] <- as.vector(kk$Thetao)
   save_array2[k, "Chl", ] <- as.vector(kk$Chl)
   save_array2[k, "GLM_Mesozoo", ] <- as.vector(kk$GLM_Mesozoo)
 }
@@ -142,7 +144,6 @@ for (k in 1:12){
 
 ```{r}
 ## now change the way monthly predictions are stored for average maps
-#very average code but the arrays are tricky to work with so here we are 
 biomass_monthly <- data.frame(Jan = NA,Feb = NA,Mar = NA,
                               Apr = NA, May = NA, Jun = NA,
                               Jul = NA,Aug = NA,Sep = NA,
@@ -156,6 +157,7 @@ for (j in 1:12){
 
 
 ```
+
 
 
 ```{r}
@@ -199,11 +201,15 @@ monthly_mean_plot <- function(months){
                             "Zooplankton biomass mg m"^-3)),
                           limits = c(5,150),oob = scales::squish) +
     theme_classic() +
-    ggtitle(label = plot_name)
+    ggtitle(label = plot_name) +
+    coord_sf(label_graticule = "SW")
   return(p)
 }
 
 ```
+
+
+
 
 ```{r}
 ################## Seasonal plots ##################
@@ -313,6 +319,52 @@ ggplot() +
 ```
 
 
+TMAP TRIAL
+
+
+```{r}
+## Map yearly average biomass using tmaps 
+
+  #take mean over 12 months 
+  biomass_monthly$mean <- rowMeans(biomass_monthly[,1:12], na.rm = T)
+  
+  ## plot with projection 
+  kk_sf <- biomass_monthly %>%
+    sf::st_as_sf(coords=c("Longitude", "Latitude"))
+  
+  ## use CRS
+  lon_lat <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+  
+  sf::st_crs(kk_sf) <- lon_lat
+  
+  landmass <- rnaturalearth::ne_countries(scale = "large") %>% 
+    sf::st_as_sf(crs = lon_lat)
+  
+    # Mollweide equal-area projection
+moll <- "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs" 
+
+#moll is 54009
+  
+  # Transform data using projection
+  kk_transformed <- kk_sf %>%
+    sf::st_transform(crs = moll)
+  
+  # Transform the landmass to the same projection
+  landmass <- landmass %>% 
+    sf::st_transform(crs = moll)
+  
+  
+library(tmap)
+  
+
+tm_shape(kk_transformed) + 
+  tm_dots(col = "mean", title = "Zooplankton Biomass", 
+          style = "cont", palette = "viridis",
+          size = 1) +
+  tm_shape(landmass) + 
+  tm_polygons() + tm_graticules()
+
+```
 
 ## Next step: do uncertainty map for annual mean surface biomass 
 
