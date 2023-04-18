@@ -9,14 +9,14 @@ library(sf)
 library(patchwork)
 
 ## Z biomass data - adjust as we did in the model 
-dat <- readRDS("Data/GlobalBiomassData.rds")
+dat <- readRDS("Data/GlobalBiomassDataUpdated.rds")
 dat <- dat %>% 
   mutate(
     Mesh = replace(Mesh, Mesh > 1000, 1000),
     Depth = replace(Depth, Depth > 1500, 1500),
     Depth2 = Depth/1000, #scaled depth variable 
     Bathy = replace(Bathy, Bathy > 7000, 7000),
-    SST = replace(SST, SST > 31, 31),
+    Thetao = replace(Thetao, Thetao > 31, 31),
     Biomass = replace(Biomass, Biomass > 10000, 10000)) %>%
   filter(Biomass > 0)
 
@@ -74,7 +74,7 @@ ggplot() +
   theme_classic() 
   
 
-ggsave("./Figures/SampleMap.jpeg", dpi = 400, height = 5, width = 7)
+ggsave("./Figures/NEWSampleMap.jpeg", dpi = 400, height = 5, width = 7)
 
 
 ggplot(dat, aes(x = Latitude)) +
@@ -158,5 +158,5 @@ p5 <- ggplot() + geom_histogram(data = dat, aes(x = Depth),
 ## COMBINED PLOT
 (p1 | p2 )/( p3 | p4 | p5) + plot_annotation(tag_levels = 'A')
 
-ggsave("./Figures/biomass_dat_plots.jpeg", 
+ggsave("./Figures/NEWbiomass_dat_plots.jpeg", 
        width = 7, height = 5, dpi = 400)

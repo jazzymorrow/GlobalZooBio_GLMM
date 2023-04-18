@@ -296,7 +296,7 @@ qqnorm(RE$Gear$`(Intercept)`)
 fPlotBiomassGLM(glm7, "Biomass_glmm7")
 
 
-####################### Add lat*lon interaction ###################
+#### Mdl 8: Add lat*lon interaction ----
 glm9 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 3)*ns(Longitude, df = 3) +
                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
@@ -311,7 +311,7 @@ summary(glm9)
 ## SST and latitude are correlated, NorthHemis not required now 
 
 
-################# Lat * Lon and SST ######################
+#### Mdl 10: Lat * Lon and SST ----
 
 glm10 <- glmer(Biomass ~ BiomassMethod + Mesh + 
                 ns(Latitude, df = 5)*ns(Longitude, df = 5) +
@@ -359,13 +359,15 @@ anova(glm10, glm11)
 
 
 #### Mdl Final ----
+# random effects are partially crossed partially nested gear within datasetID
+
 glm12 <- glmer(Biomass ~ BiomassMethod + 
                  Mesh + 
                  exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + 
-                 ns(Bathy, df = 4) +
+                 ns(Bathy, df = 3) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
-                 ns(Thetao, df = 4) + 
+                 ns(Thetao, df = 3) + 
                  (1|Gear) +
                  (1|DatasetID),
                data = dat,

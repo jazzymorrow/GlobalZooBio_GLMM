@@ -19,7 +19,7 @@ library(splines)
 library(patchwork)
 
 # IMPORT BIOMASS GLMM RDS FILE
-mdl <- readRDS(file.path("Output","glm12.rds"))
+mdl <- readRDS(file.path("Output","Newglm12.rds"))
 ```
 
 
@@ -250,14 +250,14 @@ p1 / p3  + plot_annotation(tag_levels = "A", tag_suffix = ". ") +
                                           plot.tag = element_text(size = 9,
                                           hjust = -3, vjust = -4))
 
-ggsave(paste0("./Figures/","monthly_map_pair",".jpeg"), 
+ggsave(paste0("./Figures/","NEW_monthly_map_pair",".jpeg"), 
        width = 8, height = 6, dpi = 400)
 ```
 
 
  
 ```{r}
-## ADDITIONAL: Plot singe month projection
+## ADDITIONAL: Plot single month projection
 #convert to sf 
 kk_sf <- kk %>%
   sf::st_as_sf(coords=c("Longitude", "Latitude"))
