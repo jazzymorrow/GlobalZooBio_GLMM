@@ -16,13 +16,14 @@ library(raster)
 library(patchwork)
 
 # IMPORT COPEPOD DATABASE BIOMASS GLMM
-mdl <- readRDS(file.path("Output","glm12.rds"))
+mdl <- readRDS(file.path("Output","glmFinal.rds"))
 
 ```
+
 In this file I am fixing longitude to a particular value, and looping through various depths to create a latitude x depth contour plot. 
 
 ```{r bathymetry}
-## IMPORT BATHYMETRY DATA AND ORIENT LATITUDES TO BE SOUTH TO NORTH
+## Import bathymetry data and orient latitudes to be south to north
 bathy_data <- readRDS(file.path("Data","Bathy_raster_oneDeg.rds"))
 bathy_matrix <- t(as.matrix(bathy_data$Bathy))
 bathy_matrix <- bathy_matrix[,180:1] 
@@ -40,7 +41,7 @@ dimnames(save_array)[[2]] <- c("Longitude", "Latitude",
                                "BiomassMethod", 
                                "Mesh", "Depth", "Gear", 
                                "DatasetID", "HarmTOD", 
-                               "Bathy", "HarmDOY", "SST", 
+                               "Bathy", "HarmDOY", "Thetao", 
                                "Chl", "GLM_Mesozoo")
 
 ## Set mesh, start depth and time of day
