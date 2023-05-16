@@ -141,7 +141,7 @@ saveRDS(m_loglinear, "Output/m_loglinear.rds")
 
 glmFinal <- glmer(Biomass ~ BiomassMethod + 
                  Mesh + 
-                 exp(-Depth2)*fHarmonic(HarmTOD, k = 1) + 
+                 exp(-Depth/1000)*fHarmonic(HarmTOD, k = 1) + 
                  log10(Chl) + 
                  ns(Bathy, df = 3) +
                  fHarmonic(HarmDOY, k = 1)*ns(Latitude, df = 3) +
