@@ -234,7 +234,14 @@ p4 <- monthly_mean_plot(c(9:11))
 ggsave(paste0("./Figures/","monthly_maps",".jpeg"), 
        width = 8, height = 6, dpi = 400)
 
-
+ggsave(paste0("./Figures/","1_DecFeb",".pdf"), plot = p1,
+       width = 8, height = 6)
+ggsave(paste0("./Figures/","2_MarMay",".pdf"), plot = p2,
+       width = 8, height = 6)
+ggsave(paste0("./Figures/","3_JunAug",".pdf"), plot = p3,
+       width = 8, height = 6)
+ggsave(paste0("./Figures/","4_SepNov",".pdf"), plot = p4,
+       width = 8, height = 6)
 
 ```
 
